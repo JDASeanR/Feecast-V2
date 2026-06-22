@@ -266,9 +266,14 @@ export default function DashboardTab({ appState, onNavigate }) {
                     {v > 0 && <div className="h-2 rounded-sm" style={{width:`${bp}%`,background:bc,opacity:r.isPast?1:0.7}} />}
                     {oppAmt > 0 && <div className="h-1.5 rounded-sm bg-terracotta/40" style={{width:`${oppBp}%`}} />}
                   </div>
-                  <div className="text-right text-2xs w-20 shrink-0" style={{color:r.isPast?(v>=monthlyGoal?'#2d7a3a':'#BD6439'):'#736F4C'}}>
-                    {v ? fmtK(v) : '—'}
-                    {vs !== null && <span className="ml-1" style={{color:vs>=0?'#2d7a3a':'#c0392b'}}>{vs>=0?'+':''}{fmtK(vs)}</span>}
+                  <div className="text-right text-2xs w-24 shrink-0 flex flex-col">
+                    <span style={{color:r.isPast?(v>=monthlyGoal?'#2d7a3a':'#BD6439'):'#736F4C'}} className="font-semibold">
+                      {v ? fmtK(v) : '—'}
+                      {vs !== null && <span className="ml-1" style={{color:vs>=0?'#2d7a3a':'#c0392b'}}>{vs>=0?'+':''}{fmtK(vs)}</span>}
+                    </span>
+                    {oppAmt > 0 && (
+                      <span className="text-terracotta">{fmtK(oppAmt)} <span className="opacity-60">pipeline</span></span>
+                    )}
                   </div>
                 </div>
               )
@@ -278,6 +283,7 @@ export default function DashboardTab({ appState, onNavigate }) {
             <span><span className="text-success">■</span> At/above goal</span>
             <span><span className="text-terracotta">■</span> Below goal</span>
             <span><span className="text-olive">■</span> Projected</span>
+            {activeOpps.length > 0 && <span><span className="text-terracotta/40">■</span> Pipeline (wtd {Math.round(activeOpps.reduce((s,o)=>s+(o.confidence||50),0)/activeOpps.length)}% avg conf)</span>}
           </div>
         </div>
 
