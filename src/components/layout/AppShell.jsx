@@ -12,6 +12,7 @@ import FollowUpTab from '../tabs/FollowUpTab.jsx'
 import AllocationWarningsTab from '../tabs/AllocationWarningsTab.jsx'
 import DashboardTab from '../tabs/DashboardTab.jsx'
 import SummaryTab from '../tabs/SummaryTab.jsx'
+import ReportsTab from '../tabs/ReportsTab.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -139,6 +140,8 @@ export default function AppShell({ session, store }) {
           ? <FollowUpTab appState={appState} mutate={store.mutate} />
           : activeTab === 'warnings'
           ? <AllocationWarningsTab appState={appState} />
+          : activeTab === 'reports'
+          ? <ReportsTab appState={appState} />
           : <div className="overflow-auto h-full">
               <PlaceholderTab
                 tabId={activeTab}
