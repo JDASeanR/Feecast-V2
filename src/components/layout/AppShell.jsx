@@ -10,6 +10,8 @@ import OpportunitiesTab from '../tabs/OpportunitiesTab.jsx'
 import ARTab from '../tabs/ARTab.jsx'
 import FollowUpTab from '../tabs/FollowUpTab.jsx'
 import AllocationWarningsTab from '../tabs/AllocationWarningsTab.jsx'
+import DashboardTab from '../tabs/DashboardTab.jsx'
+import SummaryTab from '../tabs/SummaryTab.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -121,7 +123,11 @@ export default function AppShell({ session, store }) {
 
       {/* Tab content */}
       <main className="flex-1 min-h-0">
-        {activeTab === 'billing'
+        {activeTab === 'dashboard'
+          ? <DashboardTab appState={appState} onNavigate={setActiveTab} />
+          : activeTab === 'summary'
+          ? <SummaryTab appState={appState} />
+          : activeTab === 'billing'
           ? <BillingTab appState={appState} mutate={store.mutate} />
           : activeTab === 'projects'
           ? <ProjectsTab appState={appState} mutate={store.mutate} />
