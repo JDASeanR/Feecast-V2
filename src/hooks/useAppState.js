@@ -81,20 +81,13 @@ export function useAppState() {
     try {
       const { data } = await supabase
         .from('app_state')
-        .select('data')
-        .eq('key', 'presence')
-        .limit(1)
-      const users = data?.[0]?.data || []
+        .select('key,data')
+        .like('key', 'presence:%')
+      const users = (data || [])
+        .filter(r => r.key !== `presence:${supabase.auth.getUser ? (await supabase.auth.getUser()).data.user?.email : ''}`)
+        .map(r => r.key.replace('presence:', ''))
       setPresence(users)
-
-      // Check if someone else saved more recently than us
-      const remoteTs = data?.[0]?.data?.lastSaved
-      if (remoteTs && lastSavedAt.current && remoteTs > lastSavedAt.current) {
-        setUpdateAvail(true)
-      }
-    } catch (err) {
-      // Silently ignore presence errors
-    }
+    } catch (err) { }
   }, [])
 
   useEffect(() => {

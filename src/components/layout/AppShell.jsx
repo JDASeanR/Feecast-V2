@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { clsx } from '../../lib/utils'
 
@@ -28,63 +28,114 @@ const TABS = [
 
 export default function AppShell({ session, store }) {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const { appState, saveStatus, updateAvail, dismissUpdate } = store
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncingAR, setSyncingAR] = useState(false)
+  const [syncMsg, setSyncMsg] = useState(null)
+  const { appState, saveStatus, updateAvail, dismissUpdate, presence, mutate } = store
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
+  const handleLogout = async () => { await supabase.auth.signOut() }
+
+  const doSync = async () => {
+    setSyncing(true); setSyncMsg(null)
+    try {
+      const resp = await fetch('/api/smartsheet', { method: 'POST' })
+      const data = await resp.json()
+      if (resp.ok) {
+        if (data.projects) {
+          mutate(prev => ({ ...prev, projects: data.projects }))
+          setSyncMsg(`✓ Synced ${data.projects.length} projects`)
+        } else setSyncMsg('✓ Sync complete')
+      } else setSyncMsg('✗ Sync failed: ' + (data.error||'Unknown error'))
+    } catch(e) { setSyncMsg('✗ ' + e.message) }
+    setSyncing(false)
+    setTimeout(() => setSyncMsg(null), 4000)
   }
 
+  const doSyncAR = async () => {
+    setSyncingAR(true); setSyncMsg(null)
+    try {
+      const resp = await fetch('/api/smartsheet-ar', { method: 'POST' })
+      const data = await resp.json()
+      if (resp.ok) {
+        if (data.invoices) {
+          mutate(prev => ({ ...prev, invoices: data.invoices }))
+          setSyncMsg(`✓ Synced ${data.invoices.length} invoices`)
+        } else setSyncMsg('✓ A/R sync complete')
+      } else setSyncMsg('✗ A/R sync failed: ' + (data.error||'Unknown error'))
+    } catch(e) { setSyncMsg('✗ ' + e.message) }
+    setSyncingAR(false)
+    setTimeout(() => setSyncMsg(null), 4000)
+  }
+
+  // Badge colors for presence
+  const BADGE_COLORS = ['#BD6439','#736F4C','#3D3935','#2d7a3a','#3b82f6']
+  const initials = email => email?.split('@')[0]?.slice(0,2)?.toUpperCase() || '?'
+
   return (
-    <div className="min-h-screen bg-sand flex flex-col">
+    <div className="flex flex-col" style={{ height: '100vh' }}>
 
       {/* Update banner */}
       {updateAvail && (
-        <div className="bg-terracotta text-white text-xs px-4 py-2 flex items-center justify-between">
+        <div className="bg-terracotta text-white text-xs px-4 py-2 flex items-center justify-between shrink-0">
           <span>Another user saved changes. Reload to get the latest.</span>
-          <button onClick={dismissUpdate} className="font-semibold underline ml-4">
-            Reload now
-          </button>
+          <button onClick={dismissUpdate} className="font-semibold underline ml-4">Reload now</button>
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-dark text-white px-4 py-2 flex items-center gap-3 shrink-0">
-        <div className="font-display text-2xl font-bold tracking-tight">
+      <header className="bg-dark text-white px-3 py-2 flex items-center gap-2 shrink-0">
+        <div className="font-display text-2xl font-bold tracking-tight mr-2">
           Fee<span className="text-terracotta">cast</span>
         </div>
-        <div className="text-xs text-dark-3 hidden sm:block">
-          Jeffrey DeMure + Associates
-        </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          {/* Save status */}
-          {saveStatus === 'saving' && (
-            <span className="text-2xs text-dark-3">
-              <i className="ti ti-loader-2 spin mr-1" />Saving…
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="text-2xs text-olive">
-              <i className="ti ti-cloud-check mr-1" />Saved
-            </span>
-          )}
-          {saveStatus === 'error' && (
-            <span className="text-2xs text-flag">
-              <i className="ti ti-cloud-x mr-1" />Save failed
-            </span>
-          )}
+        {/* Save status */}
+        {saveStatus === 'saving' && <span className="text-2xs text-dark-3"><i className="ti ti-loader-2 spin mr-1" />Saving…</span>}
+        {saveStatus === 'saved'  && <span className="text-2xs text-olive"><i className="ti ti-cloud-check mr-1" />Saved</span>}
+        {saveStatus === 'error'  && <span className="text-2xs text-flag"><i className="ti ti-cloud-x mr-1" />Save failed</span>}
 
-          {/* User email */}
-          <span className="text-2xs text-dark-3 hidden sm:block">
-            {session.user.email}
-          </span>
+        {/* Sync msg */}
+        {syncMsg && <span className={clsx('text-2xs ml-1', syncMsg.startsWith('✓')?'text-olive':'text-flag')}>{syncMsg}</span>}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Sync */}
+          <button onClick={doSync} disabled={syncing}
+            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
+            {syncing ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync</>}
+          </button>
+
+          {/* A/R Sync */}
+          <button onClick={doSyncAR} disabled={syncingAR}
+            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
+            {syncingAR ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync A/R</>}
+          </button>
+
+          {/* Settings */}
+          <button onClick={() => setSettingsOpen(true)}
+            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
+            <i className="ti ti-settings" /> Settings
+          </button>
+
+          {/* Presence badges */}
+          {presence.filter(u => u !== session.user.email).map((email, i) => (
+            <div key={email} title={email}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0"
+              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], fontSize: 9 }}>
+              {initials(email)}
+            </div>
+          ))}
+
+          {/* Current user */}
+          <div title={session.user.email}
+            className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0 border-2 border-terracotta"
+            style={{ background: '#3D3935', fontSize: 9 }}>
+            {initials(session.user.email)}
+          </div>
 
           {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2"
-          >
-            <i className="ti ti-logout" /> Sign out
+          <button onClick={handleLogout}
+            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs ml-1">
+            <i className="ti ti-logout" />
           </button>
         </div>
       </header>
@@ -153,6 +204,17 @@ export default function AppShell({ session, store }) {
         }
       </main>
 
+      {/* Settings stub */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center">
+            <i className="ti ti-settings text-4xl text-olive mb-3 block" />
+            <div className="font-semibold mb-2">Settings</div>
+            <div className="text-xs text-dark-3 mb-4">Full settings panel coming in the next session — use the original app at feecast.app to change settings for now.</div>
+            <button onClick={() => setSettingsOpen(false)} className="btn btn-primary text-xs">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
