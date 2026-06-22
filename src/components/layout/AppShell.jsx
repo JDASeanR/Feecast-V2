@@ -115,15 +115,17 @@ export default function AppShell({ session, store }) {
       </nav>
 
       {/* Tab content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0">
         {activeTab === 'billing'
           ? <BillingTab appState={appState} mutate={store.mutate} />
-          : <PlaceholderTab
-              tabId={activeTab}
-              label={TABS.find(t => t.id === activeTab)?.label}
-              appState={appState}
-              mutate={store.mutate}
-            />
+          : <div className="overflow-auto h-full">
+              <PlaceholderTab
+                tabId={activeTab}
+                label={TABS.find(t => t.id === activeTab)?.label}
+                appState={appState}
+                mutate={store.mutate}
+              />
+            </div>
         }
       </main>
 

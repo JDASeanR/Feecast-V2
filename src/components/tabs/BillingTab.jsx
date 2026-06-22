@@ -10,7 +10,8 @@ const COL_MO   = 66
 // ── Month helpers ─────────────────────────────────────────────────────────────
 function buildMonths() {
   const months = []
-  for (let i = 0; i < N_MONTHS; i++) {
+  // Start 6 months back so past months are available when toggled on
+  for (let i = -6; i < N_MONTHS; i++) {
     const d   = new Date(CY, CM - 1 + i, 1)
     const y   = d.getFullYear()
     const m   = d.getMonth() + 1
@@ -160,7 +161,7 @@ export default function BillingTab({ appState, mutate }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 88px)' }}>
 
       {/* Sticky toolbar */}
       <div className="sticky top-0 z-30 bg-sand border-b border-sand-3 px-3 py-2 flex flex-wrap items-center gap-2">
@@ -243,12 +244,12 @@ export default function BillingTab({ appState, mutate }) {
         Type % to allocate · live totals · <span className="text-success">✓ Billed out = done</span>
       </div>
 
-      {/* Table wrapper — overflow-x scroll, sticky first col works here */}
-      <div className="flex-1 overflow-auto">
-        <table className="border-collapse text-xs" style={{ minWidth: 900 }}>
+      {/* Table wrapper — overflow here is what allows sticky thead to work */}
+      <div className="flex-1 overflow-auto relative">
+        <table className="border-collapse text-xs w-full" style={{ minWidth: 900 }}>
 
           {/* ── Sticky thead ── */}
-          <thead className="sticky top-0 z-20">
+          <thead className="sticky top-0 z-20 shadow-sm">
 
             {/* Column headers */}
             <tr className="bg-sand-2">
