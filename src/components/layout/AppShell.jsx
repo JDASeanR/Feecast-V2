@@ -7,6 +7,9 @@ import PlaceholderTab from './PlaceholderTab.jsx'
 import BillingTab from '../tabs/BillingTab.jsx'
 import ProjectsTab from '../tabs/ProjectsTab.jsx'
 import OpportunitiesTab from '../tabs/OpportunitiesTab.jsx'
+import ARTab from '../tabs/ARTab.jsx'
+import FollowUpTab from '../tabs/FollowUpTab.jsx'
+import AllocationWarningsTab from '../tabs/AllocationWarningsTab.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -124,6 +127,12 @@ export default function AppShell({ session, store }) {
           ? <ProjectsTab appState={appState} mutate={store.mutate} />
           : activeTab === 'opportunities'
           ? <OpportunitiesTab appState={appState} mutate={store.mutate} />
+          : activeTab === 'ar'
+          ? <ARTab appState={appState} mutate={store.mutate} />
+          : activeTab === 'followup'
+          ? <FollowUpTab appState={appState} mutate={store.mutate} />
+          : activeTab === 'warnings'
+          ? <AllocationWarningsTab appState={appState} />
           : <div className="overflow-auto h-full">
               <PlaceholderTab
                 tabId={activeTab}
