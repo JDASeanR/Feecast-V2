@@ -4,6 +4,7 @@ import { clsx } from '../../lib/utils'
 
 // Tab placeholders — we'll fill these in one by one
 import PlaceholderTab from './PlaceholderTab.jsx'
+import BillingTab from '../tabs/BillingTab.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -115,12 +116,15 @@ export default function AppShell({ session, store }) {
 
       {/* Tab content */}
       <main className="flex-1 overflow-auto">
-        <PlaceholderTab
-          tabId={activeTab}
-          label={TABS.find(t => t.id === activeTab)?.label}
-          appState={appState}
-          mutate={store.mutate}
-        />
+        {activeTab === 'billing'
+          ? <BillingTab appState={appState} mutate={store.mutate} />
+          : <PlaceholderTab
+              tabId={activeTab}
+              label={TABS.find(t => t.id === activeTab)?.label}
+              appState={appState}
+              mutate={store.mutate}
+            />
+        }
       </main>
 
     </div>
