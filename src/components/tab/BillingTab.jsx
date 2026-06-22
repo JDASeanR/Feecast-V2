@@ -1,0 +1,725 @@
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { fmt, clsx, CY, CM, CUR_MK } from '../../lib/utils'
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const N_MONTHS = 18
+const COL_NAME = 168
+const COL_FEE  = 72
+const COL_MO   = 66
+
+// ── Month helpers ─────────────────────────────────────────────────────────────
+function buildMonths() {
+  const months = []
+  for (let i = 0; i < N_MONTHS; i++) {
+    const d   = new Date(CY, CM - 1 + i, 1)
+    const y   = d.getFullYear()
+    const m   = d.getMonth() + 1
+    const key = `${y}-${String(m).padStart(2, '0')}`
+    const isPast = key < CUR_MK
+    const label  = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+    months.push({ key, label, isPast })
+  }
+  return months
+}
+const ALL_MONTHS = buildMonths()
+
+// ── Phase calculations ────────────────────────────────────────────────────────
+const phCAEst  = ph => ph.scope === 'CA' ? (ph.fee || 0) * (ph.caMonths || 12) : 0
+const phFeeFC  = ph => ph.scope === 'CA' ? phCAEst(ph) : (ph.fee || 0)
+
+function phYTD(ph) {
+  let s = 0
+  for (let m = 1; m < CM; m++) {
+    const mk = `${CY}-${String(m).padStart(2, '0')}`
+    s += ph.monthly?.[mk] || 0
+  }
+  return s
+}
+
+const phRem = ph => Math.max(0, phFeeFC(ph) - (ph.billed || 0) - phYTD(ph))
+
+const phAlloc = ph =>
+  Object.entries(ph.monthly || {})
+    .filter(([mk]) => mk >= CUR_MK)
+    .reduce((s, [, v]) => s + (v || 0), 0)
+
+// ── Client resolution (ADD# → previous real client) ───────────────────────────
+function resolveClient(clientStr, allProjects, idx) {
+  if (clientStr?.startsWith('ADD')) {
+    for (let i = idx - 1; i >= 0; i--) {
+      if (!allProjects[i].client?.startsWith('ADD'))
+        return allProjects[i].client || '—'
+    }
+  }
+  return clientStr || '—'
+}
+
+// ── BillingTab ────────────────────────────────────────────────────────────────
+export default function BillingTab({ appState, mutate }) {
+  const { projects, settings } = appState
+  const pmList    = (settings.pms || []).map(p => p.name)
+  const monthlyGoal = settings.billing?.monthlyGoal || 395000
+  const hourlyData  = settings.billing?.hourlyByMonth || {}
+
+  // ── Local UI state ────────────────────────────────────────────────────────
+  const [filterPM,       setFilterPM]       = useState('ALL')
+  const [showPast,       setShowPast]        = useState(false)
+  const [hideBilledOut,  setHideBilledOut]   = useState(false)
+  const [showPhases,     setShowPhases]      = useState(true)
+  const [expandedPM,     setExpandedPM]      = useState({})
+  const [expandedClient, setExpandedClient]  = useState({})
+
+  const visMonths = showPast ? ALL_MONTHS : ALL_MONTHS.filter(m => !m.isPast)
+
+  // ── Prep projects ─────────────────────────────────────────────────────────
+  const resolvedProjects = projects
+    .filter(p => !p.archived)
+    .map((p, i) => ({ ...p, _client: resolveClient(p.client, projects, i) }))
+    .filter(p => filterPM === 'ALL' || p.pm === filterPM)
+    .filter(p => {
+      if (!hideBilledOut) return true
+      return p.phases.some(ph => phRem(ph) > 0)
+    })
+
+  // ── Group PM → Client → Project ──────────────────────────────────────────
+  const pmGroups = {}
+  const pmOrder  = []
+  resolvedProjects.forEach(p => {
+    const pm     = p.pm || '—'
+    const client = p._client || '—'
+    if (!pmGroups[pm]) { pmGroups[pm] = {}; pmOrder.push(pm) }
+    if (!pmGroups[pm][client]) pmGroups[pm][client] = []
+    pmGroups[pm][client].push(p)
+  })
+
+  // ── Column totals ─────────────────────────────────────────────────────────
+  const ffTots = visMonths.map(m =>
+    resolvedProjects.reduce((s, p) =>
+      s + p.phases.reduce((ps, ph) => ps + (ph.monthly?.[m.key] || 0), 0), 0)
+  )
+
+  const grandFee = resolvedProjects.reduce((s, p) =>
+    s + p.phases.reduce((ps, ph) => ps + phFeeFC(ph), 0), 0)
+
+  // ── Mutate helpers ────────────────────────────────────────────────────────
+  const setPct = useCallback((projId, phId, mk, pct) => {
+    mutate(prev => {
+      const next = { ...prev, projects: prev.projects.map(p => {
+        if (p.id !== projId) return p
+        return { ...p, phases: p.phases.map(ph => {
+          if (ph.id !== phId) return ph
+          const fee     = phFeeFC(ph)
+          const dollars = Math.round(fee * (pct / 100))
+          return { ...ph, monthly: { ...ph.monthly, [mk]: dollars } }
+        })}
+      })}
+      // Auto-mark done if ≥99.9% billed out
+      next.projects = next.projects.map(p => ({
+        ...p,
+        phases: p.phases.map(ph => {
+          const rem = phRem(ph)
+          return rem <= 0 && !ph.done ? { ...ph, done: true } : ph
+        })
+      }))
+      return next
+    })
+  }, [mutate])
+
+  const setHourly = useCallback((mk, val) => {
+    mutate(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        billing: {
+          ...prev.settings.billing,
+          hourlyByMonth: { ...(prev.settings.billing?.hourlyByMonth || {}), [mk]: val }
+        }
+      }
+    }))
+  }, [mutate])
+
+  const setBillingConf = useCallback((phId, mk, val) => {
+    mutate(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => ({
+        ...p,
+        phases: p.phases.map(ph => {
+          if (ph.id !== phId) return ph
+          const cur = (ph.billingConf || {})[mk]
+          const next = cur === val ? null : val // toggle off if same
+          return { ...ph, billingConf: { ...ph.billingConf, [mk]: next } }
+        })
+      }))
+    }))
+  }, [mutate])
+
+  const togglePM = key =>
+    setExpandedPM(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
+  const toggleClient = key =>
+    setExpandedClient(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex flex-col h-full">
+
+      {/* Sticky toolbar */}
+      <div className="sticky top-0 z-30 bg-sand border-b border-sand-3 px-3 py-2 flex flex-wrap items-center gap-2">
+        <select
+          value={filterPM}
+          onChange={e => setFilterPM(e.target.value)}
+          className="select w-auto text-xs"
+        >
+          <option value="ALL">All PMs</option>
+          {pmList.map(pm => <option key={pm}>{pm}</option>)}
+        </select>
+
+        <span className="text-xs text-olive">Goal:</span>
+        <input
+          type="number"
+          step={5000}
+          defaultValue={monthlyGoal}
+          onBlur={e => {
+            const val = parseFloat(e.target.value) || 395000
+            mutate(prev => ({
+              ...prev,
+              settings: { ...prev.settings, billing: { ...prev.settings.billing, monthlyGoal: val } }
+            }))
+          }}
+          className="input w-24 text-xs"
+        />
+
+        <button
+          onClick={() => setShowPast(p => !p)}
+          className={clsx('btn text-xs', showPast && 'btn-active')}
+        >
+          <i className="ti ti-calendar-minus" />
+          {showPast ? 'Hide past months' : 'Show past months'}
+        </button>
+
+        <button
+          onClick={() => setHideBilledOut(p => !p)}
+          className={clsx('btn text-xs', hideBilledOut && 'btn-active')}
+        >
+          <i className="ti ti-circle-check" />
+          {hideBilledOut ? 'Show billed out' : 'Hide billed out'}
+        </button>
+
+        <button
+          onClick={() => setShowPhases(p => !p)}
+          className="btn text-xs"
+        >
+          {showPhases ? 'Hide phases' : 'Show phases'}
+        </button>
+
+        <button
+          onClick={() => {
+            if (!confirm('Roll over remaining allocations into current month for all active phases?')) return
+            mutate(prev => ({
+              ...prev,
+              projects: prev.projects.map(p => ({
+                ...p,
+                phases: p.phases.map(ph => {
+                  const rem = phRem(ph)
+                  if (rem <= 0) return ph
+                  return {
+                    ...ph,
+                    monthly: {
+                      ...ph.monthly,
+                      [CUR_MK]: (ph.monthly?.[CUR_MK] || 0) + rem
+                    }
+                  }
+                })
+              }))
+            }))
+          }}
+          className="btn text-xs text-warning border-warning/30 hover:bg-warning/10"
+        >
+          <i className="ti ti-refresh" /> EOY rollover
+        </button>
+      </div>
+
+      {/* Hint */}
+      <div className="px-3 py-1.5 text-2xs text-olive">
+        Type % to allocate · live totals · <span className="text-success">✓ Billed out = done</span>
+      </div>
+
+      {/* Table wrapper — overflow-x scroll, sticky first col works here */}
+      <div className="flex-1 overflow-auto">
+        <table className="border-collapse text-xs" style={{ minWidth: 900 }}>
+
+          {/* ── Sticky thead ── */}
+          <thead className="sticky top-0 z-20">
+
+            {/* Column headers */}
+            <tr className="bg-sand-2">
+              <th className="sticky left-0 z-10 bg-sand-2 text-left font-semibold px-2 py-2 border-b border-sand-3"
+                style={{ minWidth: COL_NAME }}>
+                Project / Phase
+              </th>
+              <th className="text-right font-semibold px-2 py-2 border-b border-sand-3"
+                style={{ minWidth: COL_FEE }}>
+                Fee
+              </th>
+              {visMonths.map(m => (
+                <th key={m.key}
+                  className={clsx(
+                    'text-center font-semibold px-1 py-2 border-b border-sand-3',
+                    m.key === CUR_MK && 'bg-terracotta/15',
+                    m.isPast && 'text-dark-3'
+                  )}
+                  style={{ minWidth: COL_MO }}>
+                  {m.key === CUR_MK
+                    ? <strong>{m.label}</strong>
+                    : m.label}
+                </th>
+              ))}
+            </tr>
+
+            {/* Monthly total */}
+            <tr className="bg-sand border-t-2 border-sand-3">
+              <SummaryCell label="Monthly total" bold sticky />
+              <td />
+              {visMonths.map((m, i) => {
+                const hv    = hourlyData[m.key] || 0
+                const total = (ffTots[i] || 0) + hv
+                return (
+                  <td key={m.key}
+                    className={clsx('text-center font-bold text-xs px-1',
+                      m.key === CUR_MK && 'bg-terracotta/15')}
+                    style={{ color: total >= monthlyGoal ? '#2d7a3a' : '#BD6439' }}>
+                    {fmt(total)}
+                  </td>
+                )
+              })}
+            </tr>
+
+            {/* Hourly / reimbursable */}
+            <tr className="bg-sand-2">
+              <SummaryCell label={<>Hourly / reimbursable <span className="text-dark-3 font-normal">(manual)</span></>} sticky />
+              <td />
+              {visMonths.map(m => {
+                const v = hourlyData[m.key] || 0
+                return (
+                  <td key={m.key}
+                    className={clsx('px-0.5 py-0.5 text-center',
+                      m.key === CUR_MK && 'bg-terracotta/15')}
+                    style={{ minWidth: COL_MO }}>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      defaultValue={v || ''}
+                      placeholder="—"
+                      onBlur={e => setHourly(m.key, parseFloat(e.target.value) || 0)}
+                      className={clsx(
+                        'w-14 text-center text-xs px-1 py-0.5 rounded border bg-transparent',
+                        'border-transparent hover:border-sand-3 focus:border-terracotta focus:outline-none',
+                        v > 0 && 'text-blue-600 font-semibold'
+                      )}
+                    />
+                  </td>
+                )
+              })}
+            </tr>
+
+            {/* FF subtotal */}
+            <tr className="bg-sand-2">
+              <SummaryCell label="FF subtotal" bold sticky />
+              <td />
+              {visMonths.map((m, i) => {
+                const t = ffTots[i] || 0
+                return (
+                  <td key={m.key}
+                    className={clsx('text-center font-bold text-xs px-1',
+                      m.key === CUR_MK && 'bg-terracotta/15')}
+                    style={{ color: t >= monthlyGoal ? '#2d7a3a' : '#BD6439' }}>
+                    {fmt(t)}
+                  </td>
+                )
+              })}
+            </tr>
+
+            {/* vs goal */}
+            <tr className="bg-sand border-b-2 border-sand-3">
+              <SummaryCell label={`vs. goal (${fmt(monthlyGoal)})`} sticky />
+              <td />
+              {visMonths.map((m, i) => {
+                const hv    = hourlyData[m.key] || 0
+                const total = (ffTots[i] || 0) + hv
+                const diff  = total - monthlyGoal
+                return (
+                  <td key={m.key}
+                    className={clsx('text-center text-2xs px-1',
+                      m.key === CUR_MK && 'bg-terracotta/15')}
+                    style={{ color: diff >= 0 ? '#2d7a3a' : '#BD6439' }}>
+                    {diff >= 0 ? '+' : ''}{fmt(diff)}
+                  </td>
+                )
+              })}
+            </tr>
+          </thead>
+
+          {/* ── Body ── */}
+          <tbody>
+            {pmOrder.map(pm => {
+              const pmKey     = 'pm-' + pm
+              const pmExp     = expandedPM[pmKey] !== false
+              const clientMap = pmGroups[pm]
+              const pmProjects = Object.values(clientMap).flat()
+              const pmFee     = pmProjects.reduce((s, p) => s + p.phases.reduce((ps, ph) => ps + phFeeFC(ph), 0), 0)
+              const pmTots    = visMonths.map(m =>
+                pmProjects.reduce((s, p) => s + p.phases.reduce((ps, ph) => ps + (ph.monthly?.[m.key] || 0), 0), 0))
+
+              return [
+                // PM header row
+                <tr key={pmKey} className="bg-[#1a1a1a] text-white">
+                  <td className="sticky left-0 z-10 bg-[#1a1a1a] px-2 py-1.5 font-bold text-xs"
+                    style={{ minWidth: COL_NAME }}>
+                    <button
+                      onClick={() => togglePM(pmKey)}
+                      className="flex items-center gap-1.5 text-white"
+                    >
+                      <span className="text-2xs opacity-60">{pmExp ? '▾' : '▸'}</span>
+                      PM: {pm}
+                    </button>
+                  </td>
+                  <td className="text-right px-2 text-xs opacity-60">{fmt(pmFee)}</td>
+                  {pmTots.map((t, i) => (
+                    <td key={visMonths[i].key} className="text-center text-xs opacity-70 px-1">
+                      {t > 0 ? fmt(t) : ''}
+                    </td>
+                  ))}
+                </tr>,
+
+                // Client + project rows
+                pmExp && Object.entries(clientMap).map(([client, cProjects]) => {
+                  const clientKey = `client-${pm}-${client}`
+                  const clientExp = expandedClient[clientKey] !== false
+                  const cFee      = cProjects.reduce((s, p) => s + p.phases.reduce((ps, ph) => ps + phFeeFC(ph), 0), 0)
+                  const cTots     = visMonths.map(m =>
+                    cProjects.reduce((s, p) => s + p.phases.reduce((ps, ph) => ps + (ph.monthly?.[m.key] || 0), 0), 0))
+
+                  return [
+                    // Client header
+                    <tr key={clientKey} className="bg-sand-2/80">
+                      <td className="sticky left-0 z-10 bg-sand-2 px-2 py-1 text-xs"
+                        style={{ minWidth: COL_NAME, paddingLeft: 20 }}>
+                        <button
+                          onClick={() => toggleClient(clientKey)}
+                          className="flex items-center gap-1.5 text-dark-2"
+                        >
+                          <span className="text-2xs opacity-50">{clientExp ? '▾' : '▸'}</span>
+                          {client}
+                        </button>
+                      </td>
+                      <td className="text-right px-2 text-xs text-olive">{fmt(cFee)}</td>
+                      {cTots.map((t, i) => (
+                        <td key={visMonths[i].key} className="text-center text-2xs text-dark-3 px-1">
+                          {t > 0 ? fmt(t) : ''}
+                        </td>
+                      ))}
+                    </tr>,
+
+                    // Projects
+                    clientExp && cProjects.map(p => (
+                      <ProjectRows
+                        key={p.id}
+                        project={p}
+                        visMonths={visMonths}
+                        showPhases={showPhases}
+                        hideBilledOut={hideBilledOut}
+                        monthlyGoal={monthlyGoal}
+                        setPct={setPct}
+                        setBillingConf={setBillingConf}
+                      />
+                    ))
+                  ]
+                })
+              ]
+            })}
+
+            {/* Grand total */}
+            <tr className="bg-sand-2 border-t-2 border-sand-3">
+              <td className="sticky left-0 z-10 bg-sand-2 px-2 py-2 font-bold text-xs"
+                style={{ minWidth: COL_NAME }}>
+                Grand total — {resolvedProjects.length} project{resolvedProjects.length !== 1 ? 's' : ''} · {resolvedProjects.reduce((s, p) => s + p.phases.length, 0)} phases
+              </td>
+              <td className="text-right px-2 font-bold text-xs">{fmt(grandFee)}</td>
+              {visMonths.map(m => {
+                const t = resolvedProjects.reduce((s, p) =>
+                  s + p.phases.reduce((ps, ph) => ps + (ph.monthly?.[m.key] || 0), 0), 0)
+                return (
+                  <td key={m.key}
+                    className={clsx('text-center font-bold text-xs px-1',
+                      m.key === CUR_MK && 'bg-terracotta/15')}>
+                    {t > 0 ? fmt(t) : ''}
+                  </td>
+                )
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── SummaryCell ───────────────────────────────────────────────────────────────
+function SummaryCell({ label, bold, sticky }) {
+  return (
+    <td className={clsx(
+      'px-2 py-1.5 text-xs',
+      bold && 'font-bold',
+      sticky && 'sticky left-0 z-10 bg-inherit'
+    )}
+      style={{ minWidth: COL_NAME }}>
+      {label}
+    </td>
+  )
+}
+
+// ── ProjectRows ───────────────────────────────────────────────────────────────
+function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf }) {
+  const pFee = p.phases.reduce((s, ph) => s + phFeeFC(ph), 0)
+  const pTots = visMonths.map(m =>
+    p.phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
+  const flagged = p.flag || p.phases.some(ph => ph.flag)
+
+  return (
+    <>
+      {/* Project row */}
+      <tr className="bg-white hover:bg-sand">
+        <td className="sticky left-0 z-10 bg-inherit px-2 py-1 border-b border-sand-2"
+          style={{ minWidth: COL_NAME, paddingLeft: 34 }}>
+          <div className="flex items-center gap-1 overflow-hidden">
+            <span className="truncate text-xs font-semibold">{p.project}</span>
+            {flagged && <i className="ti ti-flag-filled text-flag shrink-0" style={{ fontSize: 10 }} />}
+          </div>
+          <div className="text-2xs text-olive">{p.pm} · {p.projNo}</div>
+        </td>
+        <td className="text-right px-2 text-xs text-olive border-b border-sand-2">{fmt(pFee)}</td>
+        {pTots.map((t, i) => (
+          <td key={visMonths[i].key}
+            className={clsx('text-center text-xs px-1 border-b border-sand-2',
+              visMonths[i].key === CUR_MK && 'bg-terracotta/15')}>
+            {t > 0 ? fmt(t) : ''}
+          </td>
+        ))}
+      </tr>
+
+      {/* Phase rows */}
+      {showPhases && (() => {
+        // Group by addendum
+        const addGroups = {}
+        const addOrder  = []
+        const visible   = hideBilledOut ? p.phases.filter(ph => phRem(ph) > 0) : p.phases
+        visible.forEach(ph => {
+          const key = ph.addendum || '__main__'
+          if (!addGroups[key]) { addGroups[key] = []; addOrder.push(key) }
+          addGroups[key].push(ph)
+        })
+
+        return addOrder.map(addKey => (
+          <AddendumGroup
+            key={addKey}
+            addKey={addKey}
+            phases={addGroups[addKey]}
+            project={p}
+            visMonths={visMonths}
+            setPct={setPct}
+            setBillingConf={setBillingConf}
+          />
+        ))
+      })()}
+    </>
+  )
+}
+
+// ── AddendumGroup ─────────────────────────────────────────────────────────────
+function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf }) {
+  return (
+    <>
+      {/* Addendum header (skip for main group) */}
+      {addKey !== '__main__' && (() => {
+        const addFee = phases.reduce((s, ph) => s + (ph.fee || 0), 0)
+        const addRem = phases.reduce((s, ph) => s + phRem(ph), 0)
+        const addTots = visMonths.map(m =>
+          phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
+        return (
+          <tr className="bg-sand-2 border-t border-sand-2">
+            <td className="sticky left-0 z-10 bg-sand-2 px-2 py-1 border-b border-sand-2"
+              style={{ paddingLeft: 40 }}>
+              <div className="text-xs font-semibold text-terracotta">{addKey}</div>
+              <div className="text-2xs text-dark-3">{phases.length} phase{phases.length !== 1 ? 's' : ''}</div>
+            </td>
+            <td className="text-right px-2 border-b border-sand-2">
+              <div className="text-xs text-terracotta">{fmt(addFee)}</div>
+              <div className="text-2xs text-olive">{fmt(addRem)} rem</div>
+            </td>
+            {addTots.map((t, i) => (
+              <td key={visMonths[i].key}
+                className={clsx('text-center text-xs text-terracotta font-semibold px-1 border-b border-sand-2',
+                  visMonths[i].key === CUR_MK && 'bg-terracotta/15')}>
+                {t > 0 ? fmt(t) : ''}
+              </td>
+            ))}
+          </tr>
+        )
+      })()}
+
+      {/* Phase rows */}
+      {phases.map(ph => (
+        <PhaseRow
+          key={ph.id}
+          phase={ph}
+          project={p}
+          visMonths={visMonths}
+          indent={addKey !== '__main__' ? 64 : 50}
+          setPct={setPct}
+          setBillingConf={setBillingConf}
+        />
+      ))}
+    </>
+  )
+}
+
+// ── PhaseRow ──────────────────────────────────────────────────────────────────
+function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf }) {
+  const rem      = phRem(ph)
+  const billedOut = rem <= 0
+  const alloc    = phAlloc(ph)
+  const fee      = phFeeFC(ph)
+  const allocPct = billedOut ? 100 : fee > 0 ? Math.round(alloc / fee * 100) : 0
+  const allocColor = billedOut ? '#2d7a3a'
+    : Math.abs(alloc - fee) < 1 ? '#2d7a3a'
+    : alloc > fee ? '#c0392b'
+    : '#888'
+
+  return (
+    <tr className={clsx('border-b border-sand-2', billedOut || ph.done ? 'opacity-40' : '')}>
+      {/* Name / alloc status */}
+      <td className="sticky left-0 z-10 bg-white px-2 py-1 border-b border-sand-2"
+        style={{ minWidth: COL_NAME, paddingLeft: indent }}>
+        <div className="truncate text-xs text-olive">{ph.name}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-2xs text-dark-3">{ph.scope}</span>
+          <span className="text-2xs" style={{ color: allocColor }}>
+            {billedOut ? '✓ Billed out' : `${allocPct}% alloc`}
+          </span>
+          {!billedOut && (
+            <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />
+          )}
+        </div>
+      </td>
+
+      {/* Fee / remaining */}
+      <td className="text-right px-2 py-1 border-b border-sand-2" style={{ minWidth: COL_FEE }}>
+        <div className="text-xs">{fmt(ph.fee)}</div>
+        <div className="text-2xs text-olive">{billedOut ? 'Done' : `${fmt(rem)} rem`}</div>
+      </td>
+
+      {/* Month cells */}
+      {visMonths.map(m => (
+        <PctCell
+          key={m.key}
+          mk={m.key}
+          phase={ph}
+          project={p}
+          isCurMo={m.key === CUR_MK}
+          billedOut={billedOut}
+          setPct={setPct}
+        />
+      ))}
+    </tr>
+  )
+}
+
+// ── PctCell ───────────────────────────────────────────────────────────────────
+function PctCell({ mk, phase: ph, project: p, isCurMo, billedOut, setPct }) {
+  const dollars = ph.monthly?.[mk] || 0
+  const fee     = phFeeFC(ph)
+  const pct     = fee > 0 ? Math.round(dollars / fee * 1000) / 10 : 0
+  const conf    = isCurMo ? (ph.billingConf?.[mk] || null) : null
+
+  const confBg = conf === 'g' ? 'rgba(74,124,63,0.45)'
+    : conf === 'y' ? 'rgba(201,131,26,0.45)'
+    : conf === 'r' ? 'rgba(160,53,42,0.45)'
+    : ''
+
+  const inputRef = useRef(null)
+
+  // Keep input in sync when external changes come in
+  useEffect(() => {
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      inputRef.current.value = pct > 0 ? pct : ''
+    }
+  }, [pct])
+
+  return (
+    <td
+      className={clsx('px-0.5 py-0.5 text-center', isCurMo && !confBg && 'bg-terracotta/15')}
+      style={{
+        minWidth: COL_MO,
+        background: confBg || undefined,
+      }}
+    >
+      <div className="flex flex-col items-center gap-0.5">
+        {billedOut || ph.done ? (
+          <span className="text-xs" style={{ color: ph.done ? '#888' : '#2d7a3a' }}>
+            {pct > 0 ? pct + '%' : '—'}
+          </span>
+        ) : (
+          <input
+            ref={inputRef}
+            type="number"
+            min={0}
+            max={100}
+            step={5}
+            defaultValue={pct > 0 ? pct : ''}
+            placeholder="—"
+            onBlur={e => {
+              const val = parseFloat(e.target.value) || 0
+              setPct(p.id, ph.id, mk, val)
+            }}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+            className={clsx(
+              'w-12 text-center text-xs px-1 py-0.5 rounded border bg-transparent',
+              'border-transparent hover:border-sand-3 focus:border-terracotta focus:bg-white focus:outline-none',
+              pct > 0 && 'text-blue-600 font-semibold'
+            )}
+          />
+        )}
+        {dollars > 0 && (
+          <div className="text-2xs text-dark-3">{fmt(dollars)}</div>
+        )}
+      </div>
+    </td>
+  )
+}
+
+// ── ConfDots ──────────────────────────────────────────────────────────────────
+function ConfDots({ phId, conf, onSet }) {
+  const dots = [
+    { val: 'g', color: '#4a7c3f', title: 'On track' },
+    { val: 'y', color: '#c9831a', title: 'Somewhat confident' },
+    { val: 'r', color: '#a0352a', title: 'At risk' },
+  ]
+  return (
+    <div className="flex items-center gap-1">
+      {dots.map(d => (
+        <button
+          key={d.val}
+          title={d.title}
+          onClick={() => onSet(phId, CUR_MK, d.val)}
+          className="w-2.5 h-2.5 rounded-full border transition-all"
+          style={{
+            background: d.color,
+            opacity: conf === d.val ? 1 : 0.2,
+            borderColor: conf === d.val ? 'rgba(0,0,0,.2)' : 'transparent',
+            transform: conf === d.val ? 'scale(1.2)' : 'scale(1)',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
