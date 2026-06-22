@@ -6,16 +6,19 @@ import { clsx } from '../../lib/utils'
 import PlaceholderTab from './PlaceholderTab.jsx'
 
 const TABS = [
-  { id: 'summary',      label: 'Summary',      icon: 'ti-layout-dashboard' },
-  { id: 'billing',      label: 'Billing',       icon: 'ti-calendar-dollar' },
-  { id: 'projects',     label: 'Projects',      icon: 'ti-folder' },
-  { id: 'opportunities',label: 'Opportunities', icon: 'ti-rocket' },
-  { id: 'ar',           label: 'A/R',           icon: 'ti-receipt' },
-  { id: 'reports',      label: 'Reports',       icon: 'ti-file-analytics' },
+  { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
+  { id: 'summary',       label: 'Summary',             icon: 'ti-chart-bar' },
+  { id: 'billing',       label: 'Billing',             icon: 'ti-calendar-dollar' },
+  { id: 'projects',      label: 'Projects',            icon: 'ti-folder' },
+  { id: 'opportunities', label: 'Opportunities',       icon: 'ti-rocket' },
+  { id: 'ar',            label: 'A/R',                 icon: 'ti-receipt' },
+  { id: 'followup',      label: 'Follow-up',           icon: 'ti-flag' },
+  { id: 'warnings',      label: 'Allocation Warnings', icon: 'ti-alert-triangle' },
+  { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
 ]
 
 export default function AppShell({ session, store }) {
-  const [activeTab, setActiveTab] = useState('summary')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const { appState, saveStatus, updateAvail, dismissUpdate } = store
 
   const handleLogout = async () => {
@@ -79,16 +82,35 @@ export default function AppShell({ session, store }) {
 
       {/* Tab nav */}
       <nav className="bg-white border-b border-sand-3 px-2 flex gap-0.5 shrink-0 overflow-x-auto">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={clsx('tab-btn', activeTab === tab.id && 'active')}
-          >
-            <i className={clsx('ti', tab.icon)} />
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map(tab => {
+          // Compute badges
+          let badge = null
+          if (tab.id === 'followup') {
+            const flaggedProjects = appState.projects.filter(p => !p.archived && !p.done && p.flag).length
+            const flaggedAR       = appState.invoices.filter(i => !i.paid && i.flag).length
+            const count           = flaggedProjects + flaggedAR
+            if (count > 0) badge = count
+          }
+          if (tab.id === 'warnings') {
+            // warnings count calculated from phVal — we'll wire properly when building that tab
+            // for now just show the tab
+          }
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={clsx('tab-btn relative', activeTab === tab.id && 'active')}
+            >
+              <i className={clsx('ti', tab.icon)} />
+              {tab.label}
+              {badge != null && (
+                <span className="absolute -top-0.5 -right-0.5 badge bg-terracotta text-white text-2xs">
+                  {badge}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </nav>
 
       {/* Tab content */}
