@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-
+ 
 const POLL_INTERVAL = 10000 // 10 seconds
-
+ 
 const DEFAULT_STATE = {
   projects:      [],
   invoices:      [],
@@ -19,7 +19,7 @@ const DEFAULT_STATE = {
   },
   nextId: 1,
 }
-
+ 
 export function useAppState() {
   const [appState, setAppState]   = useState(null)   // null = loading
   const [saveStatus, setSaveStatus] = useState(null)  // 'saving' | 'saved' | 'error'
@@ -27,7 +27,7 @@ export function useAppState() {
   const [updateAvail, setUpdateAvail] = useState(false)
   const lastSavedAt = useRef(null)
   const pollTimer   = useRef(null)
-
+ 
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     try {
@@ -49,9 +49,9 @@ export function useAppState() {
       console.error('Load failed:', err)
     }
   }, [])
-
+ 
   useEffect(() => { load() }, [load])
-
+ 
   // ── Save ──────────────────────────────────────────────────────────────────
   const save = useCallback(async (newState) => {
     setSaveStatus('saving')
@@ -75,26 +75,28 @@ export function useAppState() {
       setSaveStatus('error')
     }
   }, [])
-
+ 
   // ── Presence polling ──────────────────────────────────────────────────────
   const pollPresence = useCallback(async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const currentEmail = user?.email || ''
       const { data } = await supabase
         .from('app_state')
         .select('key,data')
         .like('key', 'presence:%')
       const users = (data || [])
-        .filter(r => r.key !== `presence:${supabase.auth.getUser ? (await supabase.auth.getUser()).data.user?.email : ''}`)
+        .filter(r => r.key !== `presence:${currentEmail}`)
         .map(r => r.key.replace('presence:', ''))
       setPresence(users)
     } catch (err) { }
   }, [])
-
+ 
   useEffect(() => {
     pollTimer.current = setInterval(pollPresence, POLL_INTERVAL)
     return () => clearInterval(pollTimer.current)
   }, [pollPresence])
-
+ 
   // ── Mutate helper ─────────────────────────────────────────────────────────
   const mutate = useCallback((updater) => {
     setAppState(prev => {
@@ -103,7 +105,7 @@ export function useAppState() {
       return next
     })
   }, [save])
-
+ 
   return {
     appState,
     mutate,
