@@ -37,32 +37,46 @@ export default function AppShell({ session, store }) {
   const handleLogout = async () => { await supabase.auth.signOut() }
 
   const doSync = async () => {
+    const token = appState.settings?.ssToken
+    const sheetId = appState.settings?.sheetId
+    if (!token) { setSyncMsg('✗ No Smartsheet token — open Settings in the original app to set it'); return }
     setSyncing(true); setSyncMsg(null)
     try {
-      const resp = await fetch('/api/smartsheet', { method: 'POST' })
+      const resp = await fetch('/api/smartsheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, sheetId })
+      })
       const data = await resp.json()
       if (resp.ok) {
         if (data.projects) {
           mutate(prev => ({ ...prev, projects: data.projects }))
           setSyncMsg(`✓ Synced ${data.projects.length} projects`)
         } else setSyncMsg('✓ Sync complete')
-      } else setSyncMsg('✗ Sync failed: ' + (data.error||'Unknown error'))
+      } else setSyncMsg('✗ ' + (data.error||'Sync failed'))
     } catch(e) { setSyncMsg('✗ ' + e.message) }
     setSyncing(false)
     setTimeout(() => setSyncMsg(null), 4000)
   }
 
   const doSyncAR = async () => {
+    const token = appState.settings?.ssToken
+    const sheetId = appState.settings?.sheetId
+    if (!token) { setSyncMsg('✗ No Smartsheet token — open Settings in the original app to set it'); return }
     setSyncingAR(true); setSyncMsg(null)
     try {
-      const resp = await fetch('/api/smartsheet-ar', { method: 'POST' })
+      const resp = await fetch('/api/smartsheet-ar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, sheetId })
+      })
       const data = await resp.json()
       if (resp.ok) {
         if (data.invoices) {
           mutate(prev => ({ ...prev, invoices: data.invoices }))
           setSyncMsg(`✓ Synced ${data.invoices.length} invoices`)
         } else setSyncMsg('✓ A/R sync complete')
-      } else setSyncMsg('✗ A/R sync failed: ' + (data.error||'Unknown error'))
+      } else setSyncMsg('✗ ' + (data.error||'A/R sync failed'))
     } catch(e) { setSyncMsg('✗ ' + e.message) }
     setSyncingAR(false)
     setTimeout(() => setSyncMsg(null), 4000)
