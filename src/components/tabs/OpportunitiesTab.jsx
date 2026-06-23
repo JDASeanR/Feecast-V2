@@ -214,7 +214,7 @@ export default function OpportunitiesTab({ appState, mutate }) {
 
               return [
                 // Type header
-                <tr key={`type-${type}`} className="bg-[#1a1a1a] text-white">
+                <tr key={`type-${type}`} className="text-vellum" style={{ background: "#3D3935", pointerEvents: "none" }}>
                   <td colSpan={3} className="px-3 py-2">
                     <span className="font-display text-sm tracking-wide">
                       <span className="opacity-50 text-xs mr-2">TYPE</span>
