@@ -1,402 +1,123 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
-import { clsx } from '../../lib/utils'
 
-// Tab placeholders — we'll fill these in one by one
-import PlaceholderTab from './PlaceholderTab.jsx'
-import BillingTab from '../tabs/BillingTab.jsx'
-import ProjectsTab from '../tabs/ProjectsTab.jsx'
-import OpportunitiesTab from '../tabs/OpportunitiesTab.jsx'
-import ARTab from '../tabs/ARTab.jsx'
-import FollowUpTab from '../tabs/FollowUpTab.jsx'
-import AllocationWarningsTab from '../tabs/AllocationWarningsTab.jsx'
-import DashboardTab from '../tabs/DashboardTab.jsx'
-import SummaryTab from '../tabs/SummaryTab.jsx'
-import ReportsTab from '../tabs/ReportsTab.jsx'
-
-const TABS = [
-  { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
-  { id: 'summary',       label: 'Summary',             icon: 'ti-chart-bar' },
-  { id: 'billing',       label: 'Billing',             icon: 'ti-calendar-dollar' },
-  { id: 'projects',      label: 'Projects',            icon: 'ti-folder' },
-  { id: 'opportunities', label: 'Opportunities',       icon: 'ti-rocket' },
-  { id: 'ar',            label: 'A/R',                 icon: 'ti-receipt' },
-  { id: 'followup',      label: 'Follow-up',           icon: 'ti-flag' },
-  { id: 'warnings',      label: 'Allocation Warnings', icon: 'ti-alert-triangle' },
-  { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
-]
-
-// ── Smartsheet parser (mirrors parseSmartsheetData from index.html) ───────────
-const CY_SYNC = new Date().getFullYear()
-const SYNC_MONTHS = (() => {
-  const m = []
-  for (let y = CY_SYNC - 1; y <= CY_SYNC + 2; y++)
-    for (let mo = 1; mo <= 12; mo++)
-      m.push({ key: `${y}-${String(mo).padStart(2,'0')}` })
-  return m
-})()
-
-function parseSmartsheetData(sheet) {
-  const findCol = patterns => {
-    for (const col of sheet.columns || []) {
-      const t = (col.title || '').toUpperCase()
-      if (patterns.some(p => t.includes(p.toUpperCase()))) return col.id
-    }
-    return null
-  }
-  const COL_PM     = findCol(['PM','PROJECT MANAGER'])
-  const COL_PROJNO = findCol(['PROJ. NO.','PROJECT NO','PROJ NO','PROJECT NUMBER','PROJ #','PROJ.NO'])
-  const COL_NAME   = findCol(['CLIENT | PROJECT NAME','PROJECT NAME','CLIENT/PROJECT','NAME'])
-  const COL_PTYPE  = findCol(['PROJECT TYPE','TYPE'])
-  const COL_SCOPE  = findCol(['SCOPE','PHASE TYPE'])
-  const COL_LOC    = findCol(['LOCATION','LOC'])
-  const COL_STATUS = findCol(['STATUS'])
-  const COL_FEE    = findCol(['FEE','CONTRACT FEE','CONTRACTED','CONTRACT','TOTAL FEE','PHASE FEE'])
-  const COL_PRIOR  = findCol(['PRIOR BILLED','BILLED TO DATE','PRIOR'])
-  const COL_DONE   = findCol(['DONE','COMPLETE','COMPLETED'])
-
-  const MON_COLS = {}
-  const MONTH_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  (sheet.columns || []).forEach(c => {
-    const m = (c.title || '').trim().match(/^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{2})\s+\$$/i)
-    if (m) { const mon = MONTH_NAMES.indexOf(m[1].toUpperCase()) + 1; const yr = 2000 + parseInt(m[2]); MON_COLS[c.id] = `${yr}-${String(mon).padStart(2,'0')}` }
-  })
-
-  const cellVal = (row, colId) => { if (!colId) return null; const cell = row.cells?.find(c => c.columnId === colId); return cell?.value ?? cell?.displayValue ?? null }
-  const sv = (row, colId, def = '') => { const v = cellVal(row, colId); if (v === null || v === undefined) return def; const s = String(v).trim(); return s === '' || s === 'nan' ? def : s }
-  const fv = (row, colId) => { const v = cellVal(row, colId); if (v === null || v === undefined || v === '') return 0; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[$,%]/g, '')); return isNaN(n) ? 0 : n }
-
-  const STOP = new Set(['wip grand total','grand total fees','grand total wip','total unprojected','copy cells below for new projects','copy cells above for new projects'])
-  const SKIP_SET = new Set(['monthly billings goal','monthly billings total','monthly hourly estimate','monthly fixed fee totals','billings goal delta','totals','wip total','wip grand total','grand total','grand total wip','total unprojected','place','holder','place holder','placeholder','project name','client name','2026 monthly billings goal','2025 avg.','q1','q2','q3','q4','scope','watermark','template',''])
-
-  const isSkip = (name, pm) => {
-    const l = name.toLowerCase().trim()
-    if (SKIP_SET.has(l)) return true
-    if (pm && l === pm.toLowerCase()) return true
-    const isAllCapsName = name === name.toUpperCase() && name.length > 4 && /^[A-Z\s\.]+$/.test(name) && !name.includes('ADD')
-    if (isAllCapsName && !name.includes('LLC') && !name.includes('INC') && !name.includes('CORP')) return true
-    if (l.startsWith('totals') || l.startsWith('wip total') || l.startsWith('grand total') || l.startsWith('2026 monthly') || l.startsWith('monthly billing') || l.startsWith('copy cells') || l.startsWith('2025 avg')) return true
-    if (l.includes('sub-consultant') || l.includes('sub consultant') || l.includes('mark-up') || l.includes('markup')) return true
-    return false
-  }
-
-  const VALID_STATUS = new Set(['A','U','H','WIA','w','PP'])
-  const VALID_TYPES  = new Set(['SFD','MF','COM','DG','PLN','DRP','OA'])
-  const blankMonthly = () => Object.fromEntries(SYNC_MONTHS.map(m => [m.key, 0]))
-  const cleanProjNo  = v => { const s = String(v || '').trim(); if (!s || s === 'XXXXX') return ''; const f = parseFloat(s); return isNaN(f) ? s : f.toFixed(1) }
-
-  const projects = []
-  let curPM = '', curClient = '', curProj = null, curAdd = null
-  let projId = 1000, phaseId = 2000
-
-  for (const row of (sheet.rows || [])) {
-    const name   = sv(row, COL_NAME)
-    const pmRaw  = sv(row, COL_PM)
-    const projNo = cleanProjNo(cellVal(row, COL_PROJNO))
-    const feeRaw = cellVal(row, COL_FEE)
-    let scope    = sv(row, COL_SCOPE)
-    const ptype  = sv(row, COL_PTYPE)
-    const loc    = sv(row, COL_LOC, 'CA') || 'CA'
-    const status = sv(row, COL_STATUS)
-    const done   = fv(row, COL_DONE) === 1 || String(cellVal(row, COL_DONE) || '').toLowerCase() === 'true'
-    const priorPct = fv(row, COL_PRIOR)
-
-    if (!name) continue
-    if (STOP.has(name.toLowerCase().trim())) break
-    if (pmRaw && pmRaw !== 'ALL' && pmRaw !== curPM) { curPM = pmRaw; curClient = ''; curProj = null; curAdd = null }
-    if (isSkip(name, curPM)) continue
-
-    const hasFee    = feeRaw !== null && feeRaw !== '' && fv(row, COL_FEE) > 0
-    const hasProjNo = projNo !== ''
-    const isAddHdr  = !hasFee && !hasProjNo && (name.toUpperCase().startsWith('ADD ') || name.toUpperCase().startsWith('ADD#') || (name.toUpperCase().includes('ADD') && name.includes('#')))
-
-    if (!hasFee && !hasProjNo && !isAddHdr) { curClient = name; curProj = null; curAdd = null; continue }
-    if (isAddHdr) { curAdd = name; continue }
-
-    if (hasProjNo && !hasFee) {
-      const st = VALID_STATUS.has(status) ? status : 'U'
-      curProj = { id: projId++, pm: curPM || 'SR', projNo, client: curClient, project: name, type: VALID_TYPES.has(ptype) ? ptype : 'SFD', location: loc, status: st, flag: false, done, archived: false, notes: '', phases: [] }
-      curAdd = null; projects.push(curProj); continue
-    }
-
-    if (hasFee || (!hasProjNo && !isAddHdr && fv(row, COL_FEE) === 0 && scope)) {
-      if (!scope) scope = 'SD'
-      if (!curProj) {
-        const st = VALID_STATUS.has(status) ? status : 'U'
-        curProj = { id: projId++, pm: curPM || 'SR', projNo: '', client: curClient, project: curClient || name, type: 'SFD', location: loc, status: st, flag: false, done: false, archived: false, notes: '', phases: [] }
-        projects.push(curProj)
-      }
-      const fee = fv(row, COL_FEE)
-      const billed = Math.round(fee * priorPct * 100) / 100
-      const pct = Math.min(100, Math.round(priorPct * 100))
-      const monthly = blankMonthly()
-      Object.entries(MON_COLS).forEach(([colId, mk]) => {
-        const cell = row.cells?.find(c => c.columnId === +colId)
-        const v = cell?.value
-        if (v && typeof v === 'number' && v !== 0) monthly[mk] = Math.round(v * 100) / 100
-      })
-      curProj.phases.push({ id: phaseId++, name, scope, addendum: curAdd, hourly: false, caMonths: null, fee: Math.round(fee * 100) / 100, billed, pct, done, flag: false, archived: false, monthly })
-    }
-  }
-  return projects.filter(p => p.phases.length > 0)
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase } from '../lib/supabase'
+ 
+const POLL_INTERVAL = 10000 // 10 seconds
+ 
+const DEFAULT_STATE = {
+  projects:      [],
+  invoices:      [],
+  opportunities: [],
+  settings: {
+    pms:          [],
+    clients:      [],
+    scopeTypes:   [],
+    projectTypes: [],
+    statusTypes:  [],
+    billing:      { annualGoal: 4740000 },
+    firm:         { name: 'Jeffrey DeMure + Associates', digest: {} },
+    hourly:       {},
+  },
+  nextId: 1,
 }
-
-const AR_SHEET_ID = 'VVvfpGPFPJGJP8PqFg3qjqW87p7pJqXFX4QJFf21'
-
-function parseARSmartsheetData(sheet, existingInvoices = []) {
-  const findCol = patterns => { for (const col of sheet.columns || []) { const t = (col.title || '').toUpperCase(); if (patterns.some(p => t.includes(p.toUpperCase()))) return col.id } return null }
-  const COL = {
-    FOLLOWUP: findCol(['FOLLOW-UP','FOLLOW UP','FOLLOWUP']),
-    BUCKET:   findCol(['DAYS PAST DUE','DAYS PAST','AGING','BUCKET']),
-    CLIENT:   findCol(['CLIENT']),
-    PM:       findCol(['PM','PROJECT MANAGER']),
-    INVOICE:  findCol(['INVOICE NUMBER','INVOICE NO','INV NO','INV #']),
-    PROJNO:   findCol(['PROJECT NUMBER','PROJECT NO','PROJ NO','PROJ #','PROJ. NO']),
-    PROJECT:  (() => { for (const col of sheet.columns || []) { const t = (col.title || '').toUpperCase(); if (t === 'PROJECT' || t === 'PROJECT NAME') return col.id } return null })(),
-    AMT_NC:   findCol(['AMOUNT - NO COMMITMENT','NO COMMITMENT']),
-    AMT_C:    findCol(['AMOUNT - COMMITMENT']),
-    NOTES:    findCol(['STATUS | COMMENTS','STATUS','COMMENTS','NOTES']),
-  }
-  const cellVal = (row, colId) => { if (!colId) return null; const cell = row.cells?.find(c => c.columnId === colId); return cell?.value ?? cell?.displayValue ?? null }
-  const sv = (row, colId, def = '') => { const v = cellVal(row, colId); if (v === null || v === undefined) return def; const s = String(v).trim(); return s === '' || s === 'nan' ? def : s }
-  const fv = (row, colId) => { const v = cellVal(row, colId); if (v === null || v === undefined || v === '') return 0; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[$,]/g, '')); return isNaN(n) ? 0 : n }
-  const BUCKETS = new Set(['0-30','30-60','60-90','90-120','120+'])
-  const SKIP_CLIENTS = new Set(['0-30','30-60','60-90','90-120','120+','0-30 days','30-60 days','60-90 days','90-120 days','120 days','totals','already collected','previous month','anticipated','flagged items total','keep','do not move','do not delete',''])
-  const isSkip = client => { const l = client.toLowerCase().trim(); if (SKIP_CLIENTS.has(l)) return true; if (l.startsWith('0-') || l.startsWith('30-') || l.startsWith('60-') || l.startsWith('90-') || l.startsWith('120') || l.startsWith('already') || l.startsWith('previous') || l.startsWith('anticipated') || l.startsWith('flagged')) return true; return false }
-  const cleanInvoiceNo = v => { const s = String(v || '').trim(); if (!s) return ''; const f = parseFloat(s); return isNaN(f) ? s : String(Math.round(f)) }
-  const cleanProjNo = v => { const s = String(v || '').trim(); if (!s) return ''; const f = parseFloat(s); return isNaN(f) ? s : f.toFixed(1) }
-  const invoiceDateFromNo = invNo => { const s = String(invNo); if (s.length >= 8) { const yr = s.slice(0,4), mo = s.slice(4,6), dy = s.slice(6,8); if (+yr > 2000 && +mo >= 1 && +mo <= 12) return `${yr}-${mo}-${dy}` } if (s.length >= 6) { const yr = s.slice(0,4), mo = s.slice(4,6); if (+yr > 2000 && +mo >= 1 && +mo <= 12) return `${yr}-${mo}-01` } return '' }
-
-  const invoices = []
-  let nextId = (existingInvoices.reduce((m, i) => Math.max(m, i.id), 0) || 5000) + 1
-  let curBucket = '0-30'
-
-  for (const row of (sheet.rows || [])) {
-    const dpd = sv(row, COL.BUCKET)
-    if (BUCKETS.has(dpd)) curBucket = dpd
-    const client = sv(row, COL.CLIENT)
-    if (!client || isSkip(client)) continue
-    const invRaw = sv(row, COL.INVOICE)
-    if (!invRaw) continue
-    const amtNC = fv(row, COL.AMT_NC), amtC = fv(row, COL.AMT_C)
-    const amount = amtNC > 0 ? amtNC : amtC
-    if (amount <= 0) continue
-    const invNo  = cleanInvoiceNo(invRaw)
-    const followUp = fv(row, COL.FOLLOWUP) === 1 || String(cellVal(row, COL.FOLLOWUP) || '').toLowerCase() === 'true'
-    invoices.push({ id: nextId++, client, pm: sv(row, COL.PM), invoiceNo: invNo, projectNo: cleanProjNo(sv(row, COL.PROJNO)), project: sv(row, COL.PROJECT), amount: Math.round(amount * 100) / 100, invoiceDate: invoiceDateFromNo(invNo), bucketOverride: curBucket, committed: amtC > 0, committedDate: null, flag: followUp, paid: false, status: sv(row, COL.NOTES) })
-  }
-  return invoices
-}
-
-export default function AppShell({ session, store }) {
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [syncingAR, setSyncingAR] = useState(false)
-  const [syncMsg, setSyncMsg] = useState(null)
-  const { appState, saveStatus, updateAvail, dismissUpdate, presence, mutate } = store
-
-  const handleLogout = async () => { await supabase.auth.signOut() }
-
-  const doSync = async () => {
-    const token = appState.settings?.ssToken
-    const sheetId = appState.settings?.sheetId
-    if (!token) { setSyncMsg('✗ No Smartsheet token — set it in Settings on feecast.app first'); return }
-    if (!sheetId) { setSyncMsg('✗ No Sheet ID — set it in Settings on feecast.app first'); return }
-    setSyncing(true); setSyncMsg(null)
+ 
+export function useAppState() {
+  const [appState, setAppState]   = useState(null)   // null = loading
+  const [saveStatus, setSaveStatus] = useState(null)  // 'saving' | 'saved' | 'error'
+  const [presence, setPresence]   = useState([])
+  const [updateAvail, setUpdateAvail] = useState(false)
+  const lastSavedAt = useRef(null)
+  const pollTimer   = useRef(null)
+ 
+  // ── Load ──────────────────────────────────────────────────────────────────
+  const load = useCallback(async () => {
     try {
-      const resp = await fetch('/api/smartsheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, sheetId })
+      const [{ data: proj }, { data: inv }, { data: st }] = await Promise.all([
+        supabase.from('projects').select('data').limit(1),
+        supabase.from('invoices').select('data').limit(1),
+        supabase.from('app_state').select('data').eq('key', 'state').limit(1),
+      ])
+      const stData = st?.[0]?.data || {}
+      setAppState({
+        projects:      proj?.[0]?.data || DEFAULT_STATE.projects,
+        invoices:      inv?.[0]?.data  || DEFAULT_STATE.invoices,
+        opportunities: stData.opportunities || DEFAULT_STATE.opportunities,
+        settings:      stData.settings      || DEFAULT_STATE.settings,
+        nextId:        stData.nextId         || DEFAULT_STATE.nextId,
       })
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}))
-        setSyncMsg('✗ ' + (err.error || `API error ${resp.status}`))
-        setSyncing(false); return
-      }
-      const sheet = await resp.json()
-      const projects = parseSmartsheetData(sheet)
-      if (!projects.length) { setSyncMsg('✗ No projects found — check Sheet ID'); setSyncing(false); return }
-      mutate(prev => ({ ...prev, projects: JSON.parse(JSON.stringify(projects)) }))
-      setSyncMsg(`✓ Synced ${projects.length} projects`)
-    } catch(e) { setSyncMsg('✗ ' + e.message) }
-    setSyncing(false)
-    setTimeout(() => setSyncMsg(null), 5000)
-  }
-
-  const doSyncAR = async () => {
-    const token = appState.settings?.ssToken
-    if (!token) { setSyncMsg('✗ No Smartsheet token — set it in Settings on feecast.app first'); return }
-    setSyncingAR(true); setSyncMsg(null)
+      lastSavedAt.current = Date.now()
+    } catch (err) {
+      console.error('Load failed:', err)
+    }
+  }, [])
+ 
+  useEffect(() => { load() }, [load])
+ 
+  // ── Save ──────────────────────────────────────────────────────────────────
+  const save = useCallback(async (newState) => {
+    setSaveStatus('saving')
     try {
-      const resp = await fetch('/api/smartsheet-ar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, sheetId: AR_SHEET_ID })
-      })
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}))
-        setSyncMsg('✗ ' + (err.error || `API error ${resp.status}`))
-        setSyncingAR(false); return
+      const statePayload = {
+        opportunities: newState.opportunities,
+        settings:      newState.settings,
+        nextId:        newState.nextId,
       }
-      const sheet = await resp.json()
-      const invoices = parseARSmartsheetData(sheet, appState.invoices)
-      if (!invoices.length) { setSyncMsg('✗ No invoices found in A/R sheet'); setSyncingAR(false); return }
-      mutate(prev => ({ ...prev, invoices }))
-      setSyncMsg(`✓ Synced ${invoices.length} invoices`)
-    } catch(e) { setSyncMsg('✗ ' + e.message) }
-    setSyncingAR(false)
-    setTimeout(() => setSyncMsg(null), 5000)
+      const [r1, r2, r3] = await Promise.all([
+        supabase.from('projects').upsert({ key: 'projects', data: newState.projects }, { onConflict: 'key' }),
+        supabase.from('invoices').upsert({ key: 'invoices', data: newState.invoices }, { onConflict: 'key' }),
+        supabase.from('app_state').upsert({ key: 'state',   data: statePayload },      { onConflict: 'key' }),
+      ])
+      const err = r1.error || r2.error || r3.error
+      if (err) {
+        console.error('Supabase upsert error:', err)
+        throw new Error(err.message || 'Upsert error')
+      }
+      lastSavedAt.current = Date.now()
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus(null), 3000)
+    } catch (err) {
+      console.error('Save failed:', err)
+      setSaveStatus('error')
+    }
+  }, [])
+ 
+  // ── Presence polling ──────────────────────────────────────────────────────
+  const pollPresence = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const currentEmail = user?.email || ''
+      const { data } = await supabase
+        .from('app_state')
+        .select('key,data')
+        .like('key', 'presence:%')
+      const users = (data || [])
+        .filter(r => r.key !== `presence:${currentEmail}`)
+        .map(r => r.key.replace('presence:', ''))
+      setPresence(users)
+    } catch (err) { }
+  }, [])
+ 
+  useEffect(() => {
+    pollTimer.current = setInterval(pollPresence, POLL_INTERVAL)
+    return () => clearInterval(pollTimer.current)
+  }, [pollPresence])
+ 
+  // ── Mutate helper ─────────────────────────────────────────────────────────
+  const mutate = useCallback((updater) => {
+    setAppState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      save(next)
+      return next
+    })
+  }, [save])
+ 
+  return {
+    appState,
+    mutate,
+    reload: load,
+    saveStatus,
+    presence,
+    updateAvail,
+    dismissUpdate: () => { setUpdateAvail(false); load() },
   }
-
-  // Badge colors for presence
-  const BADGE_COLORS = ['#BD6439','#736F4C','#3D3935','#2d7a3a','#3b82f6']
-  const initials = email => email?.split('@')[0]?.slice(0,2)?.toUpperCase() || '?'
-
-  return (
-    <div className="flex flex-col" style={{ height: '100vh' }}>
-
-      {/* Update banner */}
-      {updateAvail && (
-        <div className="bg-terracotta text-white text-xs px-4 py-2 flex items-center justify-between shrink-0">
-          <span>Another user saved changes. Reload to get the latest.</span>
-          <button onClick={dismissUpdate} className="font-semibold underline ml-4">Reload now</button>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="bg-dark text-white px-3 py-2 flex items-center gap-2 shrink-0">
-        <div className="font-display text-2xl font-bold tracking-tight mr-2">
-          Fee<span className="text-terracotta">cast</span>
-        </div>
-
-        {/* Save status */}
-        {saveStatus === 'saving' && <span className="text-2xs text-dark-3"><i className="ti ti-loader-2 spin mr-1" />Saving…</span>}
-        {saveStatus === 'saved'  && <span className="text-2xs text-olive"><i className="ti ti-cloud-check mr-1" />Saved</span>}
-        {saveStatus === 'error'  && <span className="text-2xs text-flag"><i className="ti ti-cloud-x mr-1" />Save failed</span>}
-
-        {/* Sync msg */}
-        {syncMsg && <span className={clsx('text-2xs ml-1', syncMsg.startsWith('✓')?'text-olive':'text-flag')}>{syncMsg}</span>}
-
-        <div className="ml-auto flex items-center gap-1.5">
-          {/* Sync */}
-          <button onClick={doSync} disabled={syncing}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            {syncing ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync</>}
-          </button>
-
-          {/* A/R Sync */}
-          <button onClick={doSyncAR} disabled={syncingAR}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            {syncingAR ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync A/R</>}
-          </button>
-
-          {/* Settings */}
-          <button onClick={() => setSettingsOpen(true)}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            <i className="ti ti-settings" /> Settings
-          </button>
-
-          {/* Presence badges */}
-          {presence.filter(u => u !== session.user.email).map((email, i) => (
-            <div key={email} title={email}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0"
-              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], fontSize: 9 }}>
-              {initials(email)}
-            </div>
-          ))}
-
-          {/* Current user */}
-          <div title={session.user.email}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0 border-2 border-terracotta"
-            style={{ background: '#3D3935', fontSize: 9 }}>
-            {initials(session.user.email)}
-          </div>
-
-          {/* Logout */}
-          <button onClick={handleLogout}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs ml-1">
-            <i className="ti ti-logout" />
-          </button>
-        </div>
-      </header>
-
-      {/* Tab nav */}
-      <nav className="bg-white border-b border-sand-3 px-2 flex gap-0.5 shrink-0 overflow-x-auto">
-        {TABS.map(tab => {
-          // Compute badges
-          let badge = null
-          if (tab.id === 'followup') {
-            const flaggedProjects = appState.projects.filter(p => !p.archived && !p.done && p.flag).length
-            const flaggedAR       = appState.invoices.filter(i => !i.paid && i.flag).length
-            const count           = flaggedProjects + flaggedAR
-            if (count > 0) badge = count
-          }
-          if (tab.id === 'warnings') {
-            // warnings count calculated from phVal — we'll wire properly when building that tab
-            // for now just show the tab
-          }
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={clsx('tab-btn relative', activeTab === tab.id && 'active')}
-            >
-              <i className={clsx('ti', tab.icon)} />
-              {tab.label}
-              {badge != null && (
-                <span className="absolute -top-0.5 -right-0.5 badge bg-terracotta text-white text-2xs">
-                  {badge}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </nav>
-
-      {/* Tab content */}
-      <main className="flex-1 min-h-0">
-        {activeTab === 'dashboard'
-          ? <DashboardTab appState={appState} onNavigate={setActiveTab} />
-          : activeTab === 'summary'
-          ? <SummaryTab appState={appState} />
-          : activeTab === 'billing'
-          ? <BillingTab appState={appState} mutate={store.mutate} />
-          : activeTab === 'projects'
-          ? <ProjectsTab appState={appState} mutate={store.mutate} />
-          : activeTab === 'opportunities'
-          ? <OpportunitiesTab appState={appState} mutate={store.mutate} />
-          : activeTab === 'ar'
-          ? <ARTab appState={appState} mutate={store.mutate} />
-          : activeTab === 'followup'
-          ? <FollowUpTab appState={appState} mutate={store.mutate} />
-          : activeTab === 'warnings'
-          ? <AllocationWarningsTab appState={appState} />
-          : activeTab === 'reports'
-          ? <ReportsTab appState={appState} />
-          : <div className="overflow-auto h-full">
-              <PlaceholderTab
-                tabId={activeTab}
-                label={TABS.find(t => t.id === activeTab)?.label}
-                appState={appState}
-                mutate={store.mutate}
-              />
-            </div>
-        }
-      </main>
-
-      {/* Settings stub */}
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center">
-            <i className="ti ti-settings text-4xl text-olive mb-3 block" />
-            <div className="font-semibold mb-2">Settings</div>
-            <div className="text-xs text-dark-3 mb-4">Full settings panel coming in the next session — use the original app at feecast.app to change settings for now.</div>
-            <button onClick={() => setSettingsOpen(false)} className="btn btn-primary text-xs">Close</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
