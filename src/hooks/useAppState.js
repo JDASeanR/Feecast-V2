@@ -55,22 +55,42 @@ export function useAppState() {
   // ── Save ──────────────────────────────────────────────────────────────────
   const save = useCallback(async (newState) => {
     setSaveStatus('saving')
+    const ts = new Date().toISOString()
+
+    async function upsertRow(table, data) {
+      try {
+        const { data: ex } = await supabase.from(table).select('id').limit(1).single()
+        if (ex) {
+          await supabase.from(table).update({ data, updated_at: ts }).eq('id', ex.id)
+        } else {
+          await supabase.from(table).insert({ data, updated_at: ts })
+        }
+      } catch(e) {
+        try { await supabase.from(table).insert({ data, updated_at: ts }) }
+        catch(e2) { throw new Error(`${table} save failed: ${e2.message}`) }
+      }
+    }
+
+    async function upsertState(key, data) {
+      const { error } = await supabase.from('app_state')
+        .upsert({ key, data, updated_at: ts }, { onConflict: 'key' })
+      if (error) {
+        await supabase.from('app_state').delete().eq('key', key)
+        await supabase.from('app_state').insert({ key, data, updated_at: ts })
+      }
+    }
+
     try {
       const statePayload = {
         opportunities: newState.opportunities,
         settings:      newState.settings,
         nextId:        newState.nextId,
       }
-      const [r1, r2, r3] = await Promise.all([
-        supabase.from('projects').upsert({ key: 'projects', data: newState.projects }, { onConflict: 'key' }),
-        supabase.from('invoices').upsert({ key: 'invoices', data: newState.invoices }, { onConflict: 'key' }),
-        supabase.from('app_state').upsert({ key: 'state',   data: statePayload },      { onConflict: 'key' }),
+      await Promise.all([
+        upsertRow('projects', newState.projects),
+        upsertRow('invoices', newState.invoices),
+        upsertState('state', statePayload),
       ])
-      const err = r1.error || r2.error || r3.error
-      if (err) {
-        console.error('Supabase upsert error:', err)
-        throw new Error(err.message || 'Upsert error')
-      }
       lastSavedAt.current = Date.now()
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 3000)
