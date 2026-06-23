@@ -280,6 +280,14 @@ export default function AppShell({ session, store }) {
         {syncMsg && <span className={clsx('text-2xs ml-1', syncMsg.startsWith('✓')?'text-olive':'text-flag')}>{syncMsg}</span>}
 
         <div className="ml-auto flex items-center gap-1.5">
+          {/* Manual Save */}
+          <button
+            onClick={() => store.save(appState)}
+            disabled={saveStatus === 'saving'}
+            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
+            <i className="ti ti-device-floppy" /> Save
+          </button>
+
           {/* Sync */}
           <button onClick={doSync} disabled={syncing}
             className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">

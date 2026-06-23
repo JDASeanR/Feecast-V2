@@ -133,6 +133,7 @@ export function useAppState() {
   return {
     appState,
     mutate,
+    save,
     reload: load,
     saveStatus,
     presence,
