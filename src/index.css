@@ -4,110 +4,307 @@
 
 @layer base {
   body {
-    @apply bg-sand text-dark font-body;
+    @apply bg-vellum text-graphite font-body;
     -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.55;
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  /* Scrollbar — thin, warm */
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #dedad0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: #dedad0; border-radius: 2px; }
   ::-webkit-scrollbar-thumb:hover { background: #c5c1b8; }
 }
 
 @layer components {
-  /* Buttons */
+
+  /* ─── BUTTONS ─────────────────────────────────────────────────────────────
+     Brand spec: League Gothic, +0.14em tracking, all-caps.
+     Primary = Graphite bg / Vellum text.
+     Secondary = Vellum bg / Graphite border.
+     Ghost = transparent / Terracotta border + text.
+     Hover darkens. Press translates 1px.
+  ──────────────────────────────────────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold
-           rounded border border-sand-3 bg-sand text-dark-2
-           hover:bg-sand-2 transition-colors cursor-pointer;
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5
+           font-display tracking-ui uppercase
+           rounded border transition-all cursor-pointer select-none
+           active:translate-y-px;
+    font-size: 11px;
+    line-height: 1;
   }
+
+  /* Secondary (default): Vellum surface, Graphite border */
+  .btn {
+    @apply bg-vellum text-graphite border-vellum-3
+           hover:bg-vellum-2;
+  }
+
+  /* Primary: Graphite fill, Vellum text */
   .btn-primary {
-    @apply bg-terracotta text-white border-terracotta
-           hover:bg-terracotta-dark;
+    @apply bg-graphite text-vellum border-graphite
+           hover:bg-graphite-2;
   }
+
+  /* Ghost: transparent, Terracotta border + text — one per surface */
+  .btn-ghost {
+    @apply bg-transparent text-terracotta border-terracotta
+           hover:bg-terracotta hover:text-vellum;
+  }
+
+  /* Danger: transparent, flag color */
+  .btn-danger {
+    @apply bg-transparent text-flag border-transparent
+           hover:bg-red-50;
+  }
+
+  /* Sizes */
   .btn-sm {
-    @apply px-2 py-1 text-2xs;
+    @apply px-2 py-1;
+    font-size: 10px;
   }
   .btn-icon {
-    @apply px-1.5 py-1.5;
-  }
-  .btn-danger {
-    @apply text-flag border-transparent bg-transparent hover:bg-red-50;
+    @apply px-1.5 py-1.5 gap-0;
   }
   .btn-active {
-    @apply bg-sand-2 border-sand-3;
+    @apply bg-vellum-2 border-vellum-3;
   }
 
-  /* Tab nav */
+
+  /* ─── TAB NAVIGATION ──────────────────────────────────────────────────────
+     Brand: active = Terracotta underline (2px), Graphite text.
+     No filled tab backgrounds. Inactive = muted Graphite.
+  ──────────────────────────────────────────────────────────────────────── */
   .tab-btn {
-    @apply flex flex-col items-center gap-0.5 px-3 py-2 text-2xs font-semibold
-           text-dark-3 hover:text-dark hover:bg-sand-2 rounded transition-colors
-           cursor-pointer whitespace-nowrap;
+    @apply flex flex-col items-center gap-0.5 px-3 py-2
+           font-display tracking-eyebrow uppercase
+           text-graphite-4 hover:text-graphite hover:bg-vellum-2
+           rounded transition-colors cursor-pointer whitespace-nowrap
+           border-b-2 border-transparent;
+    font-size: 9px;
+    line-height: 1;
   }
   .tab-btn.active {
-    @apply text-terracotta bg-sand-2;
+    @apply text-graphite border-b-2 border-terracotta bg-transparent;
   }
   .tab-btn i {
-    @apply text-base;
+    font-size: 16px;
   }
 
-  /* Cards */
+
+  /* ─── KPI CARDS ───────────────────────────────────────────────────────────
+     Brand: flat surface, no thick top border, no shadow.
+     Eyebrow label in Patina. Value in League Gothic.
+  ──────────────────────────────────────────────────────────────────────── */
   .kpi-card {
-    @apply bg-sand rounded-lg p-3 border-t-4;
+    @apply bg-vellum-2 rounded-lg p-4;
+    border: 0.5px solid rgba(61, 57, 53, 0.12);
   }
   .kpi-label {
-    @apply text-2xs text-olive uppercase tracking-widest mb-1;
+    @apply font-body uppercase tracking-eyebrow mb-1.5 text-patina;
+    font-size: 10px;
+    line-height: 14px;
   }
   .kpi-value {
-    @apply text-2xl font-display font-bold leading-none;
+    @apply font-display tracking-display text-graphite leading-none;
+    font-size: 32px;
+  }
+  .kpi-sub {
+    @apply font-body text-patina mt-1;
+    font-size: 11px;
   }
 
-  /* Table */
+
+  /* ─── DATA TABLE ──────────────────────────────────────────────────────────
+     Brand: hairline borders (0.5px), warm alternating rows, no heavy grid.
+  ──────────────────────────────────────────────────────────────────────── */
   .data-table {
-    @apply w-full border-collapse text-xs;
+    @apply w-full border-collapse;
+    font-size: 13px;
   }
   .data-table th {
-    @apply px-2 py-2 text-left text-2xs font-semibold text-olive uppercase
-           tracking-wider bg-sand-2 border-b border-sand-3 whitespace-nowrap;
+    @apply px-3 py-2 text-left font-body font-semibold text-patina uppercase
+           tracking-eyebrow bg-vellum-2 whitespace-nowrap;
+    font-size: 10px;
+    border-bottom: 1px solid #BD6439;  /* Terracotta hairline — one per surface */
   }
   .data-table td {
-    @apply px-2 py-1.5 border-b border-sand-2;
+    @apply px-3 py-2 text-graphite;
+    border-bottom: 0.5px solid rgba(61, 57, 53, 0.08);
   }
   .data-table tr:hover td {
-    @apply bg-sand;
+    background: rgba(245, 245, 241, 0.8);
+  }
+  .data-table tr:nth-child(even) td {
+    background: rgba(236, 234, 227, 0.4);
+  }
+  .data-table tr:nth-child(even):hover td {
+    background: rgba(236, 234, 227, 0.7);
   }
 
-  /* Form inputs */
+  /* Section group header rows inside tables */
+  .data-table .group-header td {
+    @apply font-display tracking-display uppercase text-graphite bg-vellum-2;
+    font-size: 11px;
+    border-bottom: 0.5px solid rgba(61, 57, 53, 0.15);
+    border-top: 0.5px solid rgba(61, 57, 53, 0.15);
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+
+  /* ─── FORM INPUTS ─────────────────────────────────────────────────────────
+     Vellum background (not white). Hairline border.
+  ──────────────────────────────────────────────────────────────────────── */
   .input {
-    @apply w-full px-2.5 py-1.5 text-xs border border-sand-3 rounded
-           bg-white text-dark placeholder-dark-3
-           focus:outline-none focus:ring-1 focus:ring-terracotta focus:border-terracotta;
+    @apply w-full px-2.5 py-1.5 text-sm border rounded
+           bg-vellum text-graphite placeholder-graphite-4
+           focus:outline-none focus:ring-1 focus:ring-terracotta focus:border-terracotta
+           transition-colors;
+    border-color: rgba(61, 57, 53, 0.25);
+    font-family: inherit;
+  }
+  .input:hover {
+    border-color: rgba(61, 57, 53, 0.4);
   }
   .select {
     @apply input appearance-none;
   }
 
-  /* Badge */
+
+  /* ─── BADGE ───────────────────────────────────────────────────────────────  */
   .badge {
     @apply inline-flex items-center justify-center min-w-[18px] h-[18px]
-           px-1 text-2xs font-bold rounded-full;
+           px-1 font-display tracking-display font-normal rounded;
+    font-size: 9px;
+  }
+
+
+  /* ─── SECTION HEADER ──────────────────────────────────────────────────────
+     Brand: one Terracotta accent per surface — use on primary section header.
+  ──────────────────────────────────────────────────────────────────────── */
+  .section-header {
+    @apply font-display tracking-display uppercase text-graphite;
+    font-size: 13px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #BD6439;
+    margin-bottom: 16px;
+  }
+
+  /* Secondary section header — no Terracotta (already used above) */
+  .section-header-secondary {
+    @apply font-display tracking-display uppercase text-patina;
+    font-size: 11px;
+    padding-bottom: 4px;
+    border-bottom: 0.5px solid rgba(61, 57, 53, 0.15);
+    margin-bottom: 12px;
+  }
+
+
+  /* ─── CARD ────────────────────────────────────────────────────────────────
+     Flat bordered region. No shadow. Brand: "a card is a bordered region,
+     not a floating object."
+  ──────────────────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-vellum rounded-lg;
+    border: 0.5px solid rgba(61, 57, 53, 0.15);
+    padding: 16px 20px;
+  }
+  .card-tight {
+    @apply card;
+    padding: 12px 14px;
+  }
+
+
+  /* ─── EYEBROW LABEL ───────────────────────────────────────────────────────
+     Brand signature: tiny all-caps labels. Patina color.
+  ──────────────────────────────────────────────────────────────────────── */
+  .eyebrow {
+    @apply font-body uppercase tracking-eyebrow text-patina block;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+
+  /* ─── STAT NUMBER ─────────────────────────────────────────────────────────
+     League Gothic for any big number that deserves attention.
+  ──────────────────────────────────────────────────────────────────────── */
+  .stat-number {
+    @apply font-display tracking-display text-graphite leading-none;
+    font-size: 36px;
+  }
+  .stat-number-lg {
+    @apply font-display tracking-display text-graphite leading-none;
+    font-size: 48px;
+  }
+  .stat-number-sm {
+    @apply font-display tracking-display text-graphite leading-none;
+    font-size: 24px;
+  }
+
+
+  /* ─── TERRACOTTA ACCENT LINE ──────────────────────────────────────────────
+     The brand's signature: 1–2px Terracotta rule under a heading.
+     Use once per surface.
+  ──────────────────────────────────────────────────────────────────────── */
+  .accent-rule {
+    height: 1px;
+    background: #BD6439;
+    border: none;
+    margin: 8px 0 16px;
+    width: 48px;  /* Short rule, not full width */
+  }
+
+
+  /* ─── PRESENCE / AVATAR ───────────────────────────────────────────────────  */
+  .avatar {
+    @apply inline-flex items-center justify-center rounded-full
+           font-display tracking-display uppercase text-vellum bg-graphite;
+    font-size: 9px;
+    width: 24px;
+    height: 24px;
   }
 }
 
-/* Spin animation for loading states */
+
+/* ─── UTILITIES ─────────────────────────────────────────────────────────────── */
+
+/* Spin animation */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
-/* Progress bar */
+/* Progress bar — flat, no border-radius gimmicks */
 .progress-bar {
-  height: 3px;
-  background: #eceae3;
-  border-radius: 2px;
+  height: 2px;
+  background: #ECEAE3;
+  border-radius: 1px;
   overflow: hidden;
 }
 .progress-bar-fill {
   height: 100%;
-  border-radius: 2px;
+  background: #BD6439;
+  border-radius: 1px;
   transition: width 0.3s ease;
+}
+
+/* Billing confidence dots — utility state indicators (exception to no-color rule) */
+.dot-green  { @apply inline-block w-2 h-2 rounded-full bg-success; }
+.dot-amber  { @apply inline-block w-2 h-2 rounded-full bg-warning; }
+.dot-red    { @apply inline-block w-2 h-2 rounded-full bg-flag; }
+
+/* Terracotta text accent — for the one italic/emphasis moment per surface */
+.accent-text { color: #BD6439; }
+
+/* Patina text — secondary labels, metadata */
+.meta-text {
+  color: #736F4C;
+  font-size: 11px;
+}
+
+/* Hairline divider */
+.divider {
+  border: none;
+  border-top: 0.5px solid rgba(61, 57, 53, 0.12);
+  margin: 16px 0;
 }
