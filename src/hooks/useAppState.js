@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
- 
+
 const POLL_INTERVAL = 10000 // 10 seconds
- 
+
 const DEFAULT_STATE = {
   projects:      [],
   invoices:      [],
@@ -19,7 +19,7 @@ const DEFAULT_STATE = {
   },
   nextId: 1,
 }
- 
+
 export function useAppState() {
   const [appState, setAppState]   = useState(null)   // null = loading
   const [saveStatus, setSaveStatus] = useState(null)  // 'saving' | 'saved' | 'error'
@@ -27,7 +27,7 @@ export function useAppState() {
   const [updateAvail, setUpdateAvail] = useState(false)
   const lastSavedAt = useRef(null)
   const pollTimer   = useRef(null)
- 
+
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     try {
@@ -49,9 +49,9 @@ export function useAppState() {
       console.error('Load failed:', err)
     }
   }, [])
- 
+
   useEffect(() => { load() }, [load])
- 
+
   // ── Save ──────────────────────────────────────────────────────────────────
   const save = useCallback(async (newState) => {
     setSaveStatus('saving')
@@ -62,11 +62,15 @@ export function useAppState() {
         nextId:        newState.nextId,
       }
       const [r1, r2, r3] = await Promise.all([
-        supabase.from('projects').upsert({ key: 'projects', data: newState.projects }),
-        supabase.from('invoices').upsert({ key: 'invoices', data: newState.invoices }),
-        supabase.from('app_state').upsert({ key: 'state',    data: statePayload }),
+        supabase.from('projects').upsert({ key: 'projects', data: newState.projects }, { onConflict: 'key' }),
+        supabase.from('invoices').upsert({ key: 'invoices', data: newState.invoices }, { onConflict: 'key' }),
+        supabase.from('app_state').upsert({ key: 'state',   data: statePayload },      { onConflict: 'key' }),
       ])
-      if (r1.error || r2.error || r3.error) throw new Error('Upsert error')
+      const err = r1.error || r2.error || r3.error
+      if (err) {
+        console.error('Supabase upsert error:', err)
+        throw new Error(err.message || 'Upsert error')
+      }
       lastSavedAt.current = Date.now()
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 3000)
@@ -75,7 +79,7 @@ export function useAppState() {
       setSaveStatus('error')
     }
   }, [])
- 
+
   // ── Presence polling ──────────────────────────────────────────────────────
   const pollPresence = useCallback(async () => {
     try {
@@ -91,12 +95,12 @@ export function useAppState() {
       setPresence(users)
     } catch (err) { }
   }, [])
- 
+
   useEffect(() => {
     pollTimer.current = setInterval(pollPresence, POLL_INTERVAL)
     return () => clearInterval(pollTimer.current)
   }, [pollPresence])
- 
+
   // ── Mutate helper ─────────────────────────────────────────────────────────
   const mutate = useCallback((updater) => {
     setAppState(prev => {
@@ -105,7 +109,7 @@ export function useAppState() {
       return next
     })
   }, [save])
- 
+
   return {
     appState,
     mutate,
