@@ -378,7 +378,6 @@ export default function AppShell({ session, store }) {
                 borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#3D3935' }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#8a8580' }}
