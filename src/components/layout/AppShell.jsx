@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { clsx } from '../../lib/utils'
 
-// Tab placeholders — we'll fill these in one by one
 import PlaceholderTab from './PlaceholderTab.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import BillingTab from '../tabs/BillingTab.jsx'
@@ -27,7 +26,7 @@ const TABS = [
   { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
 ]
 
-// ── Smartsheet parser (mirrors parseSmartsheetData from index.html) ───────────
+// ── Smartsheet parser ─────────────────────────────────────────────────────────
 const CY_SYNC = new Date().getFullYear()
 const SYNC_MONTHS = (() => {
   const m = []
@@ -251,7 +250,6 @@ export default function AppShell({ session, store }) {
     setTimeout(() => setSyncMsg(null), 5000)
   }
 
-  // Badge colors for presence
   const BADGE_COLORS = ['#BD6439','#736F4C','#3D3935','#2d7a3a','#3b82f6']
   const initials = email => email?.split('@')[0]?.slice(0,2)?.toUpperCase() || '?'
 
@@ -260,81 +258,108 @@ export default function AppShell({ session, store }) {
 
       {/* Update banner */}
       {updateAvail && (
-        <div className="bg-terracotta text-white text-xs px-4 py-2 flex items-center justify-between shrink-0">
+        <div className="text-xs px-4 py-2 flex items-center justify-between shrink-0"
+          style={{ background: '#BD6439', color: '#F5F5F1' }}>
           <span>Another user saved changes. Reload to get the latest.</span>
           <button onClick={dismissUpdate} className="font-semibold underline ml-4">Reload now</button>
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-dark text-white px-3 py-2 flex items-center gap-2 shrink-0">
-        <div className="font-display text-2xl font-bold tracking-tight mr-2">
-          Fee<span className="text-terracotta">cast</span>
+      {/* Header — Graphite surface */}
+      <header style={{ background: '#3D3935', color: '#F5F5F1' }}
+        className="px-4 py-2 flex items-center gap-2 shrink-0">
+
+        {/* Wordmark */}
+        <div className="font-display tracking-display mr-3" style={{ fontSize: 22, letterSpacing: '0.02em' }}>
+          FEE<span style={{ color: '#BD6439' }}>CAST</span>
         </div>
 
         {/* Save status */}
-        {saveStatus === 'saving' && <span className="text-2xs text-dark-3"><i className="ti ti-loader-2 spin mr-1" />Saving…</span>}
-        {saveStatus === 'saved'  && <span className="text-2xs text-olive"><i className="ti ti-cloud-check mr-1" />Saved</span>}
-        {saveStatus === 'error'  && <span className="text-2xs text-flag"><i className="ti ti-cloud-x mr-1" />Save failed</span>}
+        {saveStatus === 'saving' && (
+          <span className="text-2xs" style={{ color: '#736F4C' }}>
+            <i className="ti ti-loader-2 spin mr-1" />Saving…
+          </span>
+        )}
+        {saveStatus === 'saved' && (
+          <span className="text-2xs" style={{ color: '#736F4C' }}>
+            <i className="ti ti-cloud-check mr-1" />Saved
+          </span>
+        )}
+        {saveStatus === 'error' && (
+          <span className="text-2xs" style={{ color: '#c0392b' }}>
+            <i className="ti ti-cloud-x mr-1" />Save failed
+          </span>
+        )}
 
-        {/* Sync msg */}
-        {syncMsg && <span className={clsx('text-2xs ml-1', syncMsg.startsWith('✓')?'text-olive':'text-flag')}>{syncMsg}</span>}
+        {syncMsg && (
+          <span className="text-2xs ml-1" style={{ color: syncMsg.startsWith('✓') ? '#736F4C' : '#c0392b' }}>
+            {syncMsg}
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5">
-          {/* Manual Save */}
-          <button
-            onClick={() => store.save(appState)}
-            disabled={saveStatus === 'saving'}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            <i className="ti ti-device-floppy" /> Save
-          </button>
-
-          {/* Sync */}
-          <button onClick={doSync} disabled={syncing}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            {syncing ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync</>}
-          </button>
-
-          {/* A/R Sync */}
-          <button onClick={doSyncAR} disabled={syncingAR}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            {syncingAR ? <><i className="ti ti-loader-2 spin" /> Syncing…</> : <><i className="ti ti-refresh" /> Sync A/R</>}
-          </button>
-
-          {/* Settings */}
-          <button onClick={() => setSettingsOpen(true)}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs">
-            <i className="ti ti-settings" /> Settings
-          </button>
+          {/* Header buttons — ghost style on dark surface */}
+          {[
+            { label: 'Save', icon: 'ti-device-floppy', onClick: () => store.save(appState), disabled: saveStatus === 'saving' },
+            { label: syncing ? 'Syncing…' : 'Sync', icon: syncing ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSync, disabled: syncing },
+            { label: syncingAR ? 'Syncing…' : 'Sync A/R', icon: syncingAR ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSyncAR, disabled: syncingAR },
+            { label: 'Settings', icon: 'ti-settings', onClick: () => setSettingsOpen(true) },
+          ].map(({ label, icon, onClick, disabled }) => (
+            <button key={label} onClick={onClick} disabled={disabled}
+              className="inline-flex items-center gap-1 px-2.5 py-1 font-display tracking-ui uppercase transition-colors cursor-pointer"
+              style={{
+                fontSize: 10,
+                background: 'transparent',
+                color: '#F5F5F1',
+                border: '0.5px solid rgba(245,245,241,0.25)',
+                borderRadius: 4,
+                opacity: disabled ? 0.5 : 1,
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.6)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.25)'}
+            >
+              <i className={`ti ${icon}`} style={{ fontSize: 12 }} /> {label}
+            </button>
+          ))}
 
           {/* Presence badges */}
           {presence.filter(u => u !== session.user.email).map((email, i) => (
             <div key={email} title={email}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0"
-              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], fontSize: 9 }}>
+              className="w-6 h-6 rounded-full flex items-center justify-center font-display shrink-0"
+              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], color: '#F5F5F1', fontSize: 9 }}>
               {initials(email)}
             </div>
           ))}
 
           {/* Current user */}
           <div title={session.user.email}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0 border-2 border-terracotta"
-            style={{ background: '#3D3935', fontSize: 9 }}>
+            className="w-6 h-6 rounded-full flex items-center justify-center font-display shrink-0"
+            style={{ background: '#3D3935', color: '#F5F5F1', fontSize: 9, border: '1.5px solid #BD6439' }}>
             {initials(session.user.email)}
           </div>
 
           {/* Logout */}
           <button onClick={handleLogout}
-            className="btn btn-sm text-dark-3 border-dark-2 hover:text-white hover:bg-dark-2 text-2xs ml-1">
+            className="inline-flex items-center px-2 py-1 transition-colors cursor-pointer"
+            style={{
+              fontSize: 12,
+              background: 'transparent',
+              color: 'rgba(245,245,241,0.5)',
+              border: 'none',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#F5F5F1'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(245,245,241,0.5)'}
+          >
             <i className="ti ti-logout" />
           </button>
         </div>
       </header>
 
-      {/* Tab nav */}
-      <nav className="bg-white border-b border-sand-3 px-2 flex gap-0.5 shrink-0 overflow-x-auto">
+      {/* Tab nav — Vellum surface, Terracotta underline on active */}
+      <nav style={{ background: '#F5F5F1', borderBottom: '1px solid rgba(61,57,53,0.12)' }}
+        className="px-2 flex gap-0 shrink-0 overflow-x-auto">
         {TABS.map(tab => {
-          // Compute badges
+          const isActive = activeTab === tab.id
           let badge = null
           if (tab.id === 'followup') {
             const flaggedProjects = appState.projects.filter(p => !p.archived && !p.done && p.flag).length
@@ -342,20 +367,27 @@ export default function AppShell({ session, store }) {
             const count           = flaggedProjects + flaggedAR
             if (count > 0) badge = count
           }
-          if (tab.id === 'warnings') {
-            // warnings count calculated from phVal — we'll wire properly when building that tab
-            // for now just show the tab
-          }
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={clsx('tab-btn relative', activeTab === tab.id && 'active')}
+              className="relative flex flex-col items-center gap-0.5 px-3 py-2 cursor-pointer transition-colors whitespace-nowrap font-display tracking-eyebrow uppercase"
+              style={{
+                fontSize: 9,
+                color: isActive ? '#3D3935' : '#8a8580',
+                borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#3D3935' }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#8a8580' }}
             >
-              <i className={clsx('ti', tab.icon)} />
+              <i className={clsx('ti', tab.icon)} style={{ fontSize: 16 }} />
               {tab.label}
               {badge != null && (
-                <span className="absolute -top-0.5 -right-0.5 badge bg-terracotta text-white text-2xs">
+                <span className="absolute -top-0.5 -right-0.5 badge"
+                  style={{ background: '#BD6439', color: '#F5F5F1', fontSize: 9 }}>
                   {badge}
                 </span>
               )}
@@ -395,7 +427,6 @@ export default function AppShell({ session, store }) {
         }
       </main>
 
-      {/* Settings */}
       {settingsOpen && (
         <SettingsModal
           appState={appState}

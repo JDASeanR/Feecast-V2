@@ -40,25 +40,18 @@ export default function SummaryTab({ appState }) {
   const tR  = tF-tB-tYTD
   const wip = tF>0?(tB+tYTD)/tF:0
 
-  // YTD spotlight
   const ytdMks = Array.from({length:CM-1},(_,i)=>`${CY}-${String(i+1).padStart(2,'0')}`)
   const ytdActual = ytdMks.reduce((s,mk)=>s+mTotalAll(mk,projects),0)
   const ytdGoal   = ytdMks.length * monthlyGoal
   const ytdDelta  = ytdActual - ytdGoal
 
-  // Current month
   const curMonthLabel = new Date(CY,CM-1,1).toLocaleDateString('en-US',{month:'short',year:'2-digit'})
   const curT  = mTotalAll(CUR_MK, projects.filter(p=>!p.archived))
   const curDelta = curT - monthlyGoal
 
-  // A/R
   const arTot = invoices.filter(i=>!i.paid).reduce((s,i)=>s+(i.amount||0),0)
-  const arPD  = invoices.filter(i=>!i.paid&&effBucket(i)!=='0-30').reduce((s,i)=>s+(i.amount||0),0)
-
-  // Pipeline
   const pipeline = activeOpps.reduce((s,o)=>s+(o.fee||0)*((o.confidence||50)/100),0)
 
-  // By PM
   const byPM = {}
   active.forEach(p=>{
     if(!p.pm)return
@@ -67,7 +60,6 @@ export default function SummaryTab({ appState }) {
     if(p.flag||p.phases.some(ph=>ph.flag))byPM[p.pm].flags++
   })
 
-  // PM billing coverage (next 3 months)
   const n3Mks = Array.from({length:3},(_,i)=>{const d=new Date(CY,CM-1+i,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})
   const tBacklog = active.reduce((s,p)=>s+pRem(p),0)
 
@@ -94,54 +86,61 @@ export default function SummaryTab({ appState }) {
   const fmtM = n => '$'+(Math.abs(n)/1e6).toFixed(2)+'M'
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-5 space-y-5" style={{ background: '#F5F5F1', minHeight: '100%' }}>
 
       {/* Top KPI rows */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-5">
 
         {/* YTD */}
-        <div className="bg-white rounded-lg border border-sand-3 p-4">
-          <div className="font-display text-base tracking-wide mb-3">YTD {CY} — {ytdMks.length} months</div>
-          <div className="grid grid-cols-3 gap-3">
-            <KPI label="Billed YTD" sub="FF + hourly, Jan–last mo" value={fmtK(ytdActual)} color="text-terracotta" />
+        <div className="card">
+          <div className="eyebrow mb-1">YTD {CY}</div>
+          <div className="font-display tracking-display text-graphite mb-4" style={{ fontSize: 13 }}>
+            {ytdMks.length} MONTHS ELAPSED
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <KPI label="Billed YTD" sub="FF + hourly, Jan–last mo" value={fmtK(ytdActual)} accent />
             <KPI label="Goal YTD" sub="mo goal × months elapsed" value={fmtK(ytdGoal)} />
-            <KPI label="vs. Goal" sub="billed − goal" value={(ytdDelta>=0?'+':'')+fmtK(ytdDelta)} color={ytdDelta>=0?'text-success':'text-warning'} />
+            <KPI label="vs. Goal" sub="billed − goal" value={(ytdDelta>=0?'+':'')+fmtK(ytdDelta)} delta={ytdDelta} />
           </div>
         </div>
 
         {/* Current month */}
-        <div className="bg-white rounded-lg border border-sand-3 p-4">
-          <div className="font-display text-base tracking-wide mb-3">{curMonthLabel} — Current Month</div>
-          <div className="grid grid-cols-3 gap-3">
-            <KPI label="Projected" sub="current mo allocations" value={fmtK(curT)} color={curDelta>=0?'text-success':'text-warning'} />
+        <div className="card">
+          <div className="eyebrow mb-1">Current Month</div>
+          <div className="font-display tracking-display text-graphite mb-4" style={{ fontSize: 13 }}>
+            {curMonthLabel.toUpperCase()}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <KPI label="Projected" sub="current mo allocations" value={fmtK(curT)} delta={curDelta} />
             <KPI label="Goal" sub="annual goal ÷ 12" value={fmtK(monthlyGoal)} />
-            <KPI label="vs. Goal" sub="projected − mo goal" value={(curDelta>=0?'+':'')+fmtK(curDelta)} color={curDelta>=0?'text-success':'text-warning'} />
+            <KPI label="vs. Goal" sub="projected − mo goal" value={(curDelta>=0?'+':'')+fmtK(curDelta)} delta={curDelta} />
           </div>
         </div>
       </div>
 
       {/* Firm metrics strip */}
-      <div className="bg-white rounded-lg border border-sand-3 p-4">
-        <div className="grid grid-cols-6 gap-4">
+      <div className="card">
+        <div className="eyebrow mb-4">Firm Overview</div>
+        <div className="grid grid-cols-6 gap-5">
           <MetricCell label="Total Fees" sub="all contracted fees" value={fmtM(tF)} />
           <MetricCell label="Prior Billed" sub="pre-current year" value={fmtM(tB)} />
           <MetricCell label="Remaining" sub="fees − billed − YTD" value={fmtM(tR)} warn />
           <MetricCell label="Firm WIP" sub="billed ÷ total fees" value={Math.round(wip*100)+'%'} />
           <MetricCell label="Total A/R" sub="unpaid invoices" value={fmt(arTot)} warn />
-          <MetricCell label="Pipeline (wtd)" sub="fee × confidence%" value={fmtM(pipeline)} purple />
+          <MetricCell label="Pipeline (wtd)" sub="fee × confidence%" value={fmtM(pipeline)} accent />
         </div>
       </div>
 
       {/* By PM table */}
-      <div className="bg-white rounded-lg border border-sand-3 p-4">
-        <div className="text-2xs font-semibold text-olive uppercase tracking-wider mb-3">By Project Manager</div>
+      <div className="card">
+        <div className="eyebrow mb-4">By Project Manager</div>
         <table className="data-table w-full">
           <thead>
             <tr>
               <th>PM</th>
               <th className="text-right">Projects</th>
-              <th className="text-right">Total Fees <span className="font-normal text-dark-3">(all phase fees)</span></th>
-              <th className="text-right">Billed <span className="font-normal text-dark-3">(prior + YTD)</span></th>
+              <th className="text-right">Total Fees <span style={{ fontWeight: 400, opacity: 0.6 }}>(all phase fees)</span></th>
+              <th className="text-right">Billed <span style={{ fontWeight: 400, opacity: 0.6 }}>(prior + YTD)</span></th>
               <th className="text-right">Remaining</th>
               <th className="text-right">WIP %</th>
               <th className="text-right">Flags</th>
@@ -151,13 +150,16 @@ export default function SummaryTab({ appState }) {
             {Object.entries(byPM).sort((a,b)=>b[1].fee-a[1].fee).map(([pm,d])=>{
               const rem=d.fee-d.billed,w=d.fee>0?Math.round(d.billed/d.fee*100):0
               return <tr key={pm}>
-                <td className="px-2 font-semibold text-xs">{pm}</td>
-                <td className="px-2 text-right text-xs">{d.count}</td>
-                <td className="px-2 text-right text-xs">{fmt(d.fee)}</td>
-                <td className="px-2 text-right text-xs">{fmt(d.billed)}</td>
-                <td className="px-2 text-right text-xs text-olive">{fmt(rem)}</td>
-                <td className="px-2 text-right text-xs">{w}%</td>
-                <td className="px-2 text-right text-xs">{d.flags>0?<span className="text-flag font-bold">{d.flags} <i className="ti ti-flag-filled" style={{fontSize:10}} /></span>:'—'}</td>
+                <td className="font-semibold">{pm}</td>
+                <td className="text-right">{d.count}</td>
+                <td className="text-right">{fmt(d.fee)}</td>
+                <td className="text-right">{fmt(d.billed)}</td>
+                <td className="text-right" style={{ color: '#736F4C' }}>{fmt(rem)}</td>
+                <td className="text-right">{w}%</td>
+                <td className="text-right">{d.flags>0
+                  ? <span style={{ color: '#c0392b', fontWeight: 700 }}>{d.flags} <i className="ti ti-flag-filled" style={{fontSize:10}} /></span>
+                  : '—'}
+                </td>
               </tr>
             })}
           </tbody>
@@ -165,18 +167,18 @@ export default function SummaryTab({ appState }) {
       </div>
 
       {/* PM Billing Coverage */}
-      <div className="bg-white rounded-lg border border-sand-3 p-4">
-        <div className="font-display text-lg tracking-wide mb-1">PM Billing Coverage</div>
-        <div className="text-xs text-dark-3 mb-3">
+      <div className="card">
+        <div className="eyebrow mb-1">PM Billing Coverage</div>
+        <div className="mb-4" style={{ fontSize: 12, color: '#736F4C' }}>
           Coverage = next 3 months allocated vs. proportional billing goal &nbsp;·&nbsp;
-          <span className="text-success">✓ ≥80%</span> &nbsp;
-          <span className="text-terracotta">⚡ 60–80%</span> &nbsp;
-          <span className="text-flag">⚠️ &lt;60%</span>
+          <span style={{ color: '#2d7a3a' }}>✓ ≥80%</span> &nbsp;
+          <span style={{ color: '#BD6439' }}>⚡ 60–80%</span> &nbsp;
+          <span style={{ color: '#c0392b' }}>⚠️ &lt;60%</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse" style={{ fontSize: 12 }}>
             <thead>
-              <tr className="bg-dark text-white">
+              <tr style={{ background: '#3D3935', color: '#F5F5F1' }}>
                 <Th left>PM</Th>
                 <Th>Backlog</Th>
                 <Th>Mo Goal</Th>
@@ -190,38 +192,42 @@ export default function SummaryTab({ appState }) {
             </thead>
             <tbody>
               {pmData.map(d=>(
-                <tr key={d.pm} className="border-b border-sand-2 hover:bg-sand">
+                <tr key={d.pm} style={{ borderBottom: '0.5px solid rgba(61,57,53,0.1)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(236,234,227,0.5)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td className="px-3 py-2 font-bold">{d.pm}</td>
                   <td className="px-3 py-2 text-right">{fmt(d.backlog)}</td>
                   <td className="px-3 py-2 text-right">
                     {d.hasCustomGoal
-                      ? <span className="text-olive font-semibold">{fmt(d.monthlyGoalUsed)}</span>
-                      : <span className="text-dark-3">{fmt(d.monthlyGoalUsed)} <span className="text-2xs">(auto)</span></span>
+                      ? <span style={{ color: '#736F4C', fontWeight: 600 }}>{fmt(d.monthlyGoalUsed)}</span>
+                      : <span style={{ color: '#8a8580' }}>{fmt(d.monthlyGoalUsed)} <span style={{ fontSize: 10 }}>(auto)</span></span>
                     }
                   </td>
                   {d.n3Months.map((v,i)=>(
-                    <td key={i} className={clsx('px-3 py-2 text-right', v>0?'font-semibold':'text-dark-3')}>
+                    <td key={i} className="px-3 py-2 text-right"
+                      style={{ fontWeight: v>0?600:400, color: v>0?'#3D3935':'#8a8580' }}>
                       {v>0?fmt(v):'—'}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-right text-olive">{fmt(Math.round(d.n3Goal))}</td>
+                  <td className="px-3 py-2 text-right" style={{ color: '#736F4C' }}>{fmt(Math.round(d.n3Goal))}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2 justify-center">
-                      <div className="w-12 h-1.5 bg-sand-3 rounded overflow-hidden">
-                        <div className="h-full rounded" style={{width:Math.min(100,d.coverage)+'%',background:d.coverageColor}} />
+                      <div style={{ width: 48, height: 3, background: '#ECEAE3', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: Math.min(100,d.coverage)+'%', height: '100%', background: d.coverageColor, borderRadius: 2 }} />
                       </div>
-                      <span className="font-bold text-2xs" style={{color:d.coverageColor}}>
+                      <span style={{ fontWeight: 700, fontSize: 11, color: d.coverageColor }}>
                         {d.coverageIcon} {d.coverage}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-right text-terracotta">{d.pipeline>0?fmt(d.pipeline):'—'}</td>
+                  <td className="px-3 py-2 text-right" style={{ color: '#BD6439' }}>{d.pipeline>0?fmt(d.pipeline):'—'}</td>
                   <td className="px-3 py-2 text-right font-semibold">{fmt(d.totalCap)}</td>
                   <td className="px-3 py-2 text-center">
-                    <span className={clsx(
-                      'text-2xs px-2 py-0.5 rounded font-semibold',
-                      d.monthsOfWork>=6?'bg-green-50 text-success':d.monthsOfWork>=3?'bg-orange-50 text-terracotta':'bg-red-50 text-flag'
-                    )}>
+                    <span style={{
+                      fontSize: 11, padding: '2px 8px', borderRadius: 3, fontWeight: 600,
+                      background: d.monthsOfWork>=6?'rgba(45,122,58,0.1)':d.monthsOfWork>=3?'rgba(189,100,57,0.1)':'rgba(192,57,43,0.1)',
+                      color: d.monthsOfWork>=6?'#2d7a3a':d.monthsOfWork>=3?'#BD6439':'#c0392b'
+                    }}>
                       {d.monthsOfWork} mo
                     </span>
                   </td>
@@ -230,7 +236,7 @@ export default function SummaryTab({ appState }) {
             </tbody>
           </table>
         </div>
-        <div className="text-2xs text-dark-3 mt-2">
+        <div className="mt-3" style={{ fontSize: 11, color: '#736F4C' }}>
           Goal share is proportional to each PM's backlog. Pipeline includes active opportunities weighted by confidence.
         </div>
       </div>
@@ -238,29 +244,34 @@ export default function SummaryTab({ appState }) {
   )
 }
 
-function KPI({ label, sub, value, color }) {
+function KPI({ label, sub, value, accent, delta }) {
+  const color = delta !== undefined
+    ? (delta >= 0 ? '#2d7a3a' : '#BD6439')
+    : accent ? '#BD6439' : '#3D3935'
   return (
-    <div className="bg-sand rounded p-3">
-      <div className="text-2xs text-dark-3 mb-1">{label}</div>
-      <div className={clsx('text-lg font-bold leading-none', color||'text-dark')}>{value}</div>
-      {sub && <div className="text-2xs text-dark-3 mt-1">{sub}</div>}
+    <div style={{ background: '#ECEAE3', borderRadius: 4, padding: '12px 14px' }}>
+      <div className="eyebrow mb-1">{label}</div>
+      <div className="font-display tracking-display leading-none" style={{ fontSize: 24, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: '#736F4C', marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }
 
-function MetricCell({ label, sub, value, warn, purple }) {
+function MetricCell({ label, sub, value, warn, accent }) {
+  const color = warn ? '#BD6439' : accent ? '#BD6439' : '#3D3935'
   return (
     <div>
-      <div className="text-2xs text-dark-3 mb-1">{label}</div>
-      <div className={clsx('text-lg font-bold leading-none',warn?'text-warning':purple?'text-terracotta':'text-dark')}>{value}</div>
-      {sub && <div className="text-2xs text-dark-3 mt-0.5">{sub}</div>}
+      <div className="eyebrow mb-1">{label}</div>
+      <div className="font-display tracking-display leading-none" style={{ fontSize: 20, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: '#736F4C', marginTop: 3 }}>{sub}</div>}
     </div>
   )
 }
 
 function Th({ children, left }) {
   return (
-    <th className={clsx('px-3 py-2 text-2xs font-semibold uppercase tracking-wider', left?'text-left':'text-right')}>
+    <th className="px-3 py-2 font-display tracking-eyebrow uppercase"
+      style={{ fontSize: 9, textAlign: left ? 'left' : 'right', fontWeight: 400 }}>
       {children}
     </th>
   )
