@@ -4,6 +4,7 @@ import { clsx } from '../../lib/utils'
 
 // Tab placeholders — we'll fill these in one by one
 import PlaceholderTab from './PlaceholderTab.jsx'
+import SettingsModal from './SettingsModal.jsx'
 import BillingTab from '../tabs/BillingTab.jsx'
 import ProjectsTab from '../tabs/ProjectsTab.jsx'
 import OpportunitiesTab from '../tabs/OpportunitiesTab.jsx'
@@ -394,16 +395,13 @@ export default function AppShell({ session, store }) {
         }
       </main>
 
-      {/* Settings stub */}
+      {/* Settings */}
       {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center">
-            <i className="ti ti-settings text-4xl text-olive mb-3 block" />
-            <div className="font-semibold mb-2">Settings</div>
-            <div className="text-xs text-dark-3 mb-4">Full settings panel coming in the next session — use the original app at feecast.app to change settings for now.</div>
-            <button onClick={() => setSettingsOpen(false)} className="btn btn-primary text-xs">Close</button>
-          </div>
-        </div>
+        <SettingsModal
+          appState={appState}
+          mutate={mutate}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
     </div>
   )
