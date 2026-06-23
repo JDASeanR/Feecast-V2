@@ -26,6 +26,168 @@ const TABS = [
   { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
 ]
 
+// ── Smartsheet parser (mirrors parseSmartsheetData from index.html) ───────────
+const CY_SYNC = new Date().getFullYear()
+const SYNC_MONTHS = (() => {
+  const m = []
+  for (let y = CY_SYNC - 1; y <= CY_SYNC + 2; y++)
+    for (let mo = 1; mo <= 12; mo++)
+      m.push({ key: `${y}-${String(mo).padStart(2,'0')}` })
+  return m
+})()
+
+function parseSmartsheetData(sheet) {
+  const findCol = patterns => {
+    for (const col of sheet.columns || []) {
+      const t = (col.title || '').toUpperCase()
+      if (patterns.some(p => t.includes(p.toUpperCase()))) return col.id
+    }
+    return null
+  }
+  const COL_PM     = findCol(['PM','PROJECT MANAGER'])
+  const COL_PROJNO = findCol(['PROJ. NO.','PROJECT NO','PROJ NO','PROJECT NUMBER','PROJ #','PROJ.NO'])
+  const COL_NAME   = findCol(['CLIENT | PROJECT NAME','PROJECT NAME','CLIENT/PROJECT','NAME'])
+  const COL_PTYPE  = findCol(['PROJECT TYPE','TYPE'])
+  const COL_SCOPE  = findCol(['SCOPE','PHASE TYPE'])
+  const COL_LOC    = findCol(['LOCATION','LOC'])
+  const COL_STATUS = findCol(['STATUS'])
+  const COL_FEE    = findCol(['FEE','CONTRACT FEE','CONTRACTED','CONTRACT','TOTAL FEE','PHASE FEE'])
+  const COL_PRIOR  = findCol(['PRIOR BILLED','BILLED TO DATE','PRIOR'])
+  const COL_DONE   = findCol(['DONE','COMPLETE','COMPLETED'])
+
+  const MON_COLS = {}
+  const MONTH_NAMES = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  (sheet.columns || []).forEach(c => {
+    const m = (c.title || '').trim().match(/^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{2})\s+\$$/i)
+    if (m) { const mon = MONTH_NAMES.indexOf(m[1].toUpperCase()) + 1; const yr = 2000 + parseInt(m[2]); MON_COLS[c.id] = `${yr}-${String(mon).padStart(2,'0')}` }
+  })
+
+  const cellVal = (row, colId) => { if (!colId) return null; const cell = row.cells?.find(c => c.columnId === colId); return cell?.value ?? cell?.displayValue ?? null }
+  const sv = (row, colId, def = '') => { const v = cellVal(row, colId); if (v === null || v === undefined) return def; const s = String(v).trim(); return s === '' || s === 'nan' ? def : s }
+  const fv = (row, colId) => { const v = cellVal(row, colId); if (v === null || v === undefined || v === '') return 0; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[$,%]/g, '')); return isNaN(n) ? 0 : n }
+
+  const STOP = new Set(['wip grand total','grand total fees','grand total wip','total unprojected','copy cells below for new projects','copy cells above for new projects'])
+  const SKIP_SET = new Set(['monthly billings goal','monthly billings total','monthly hourly estimate','monthly fixed fee totals','billings goal delta','totals','wip total','wip grand total','grand total','grand total wip','total unprojected','place','holder','place holder','placeholder','project name','client name','2026 monthly billings goal','2025 avg.','q1','q2','q3','q4','scope','watermark','template',''])
+
+  const isSkip = (name, pm) => {
+    const l = name.toLowerCase().trim()
+    if (SKIP_SET.has(l)) return true
+    if (pm && l === pm.toLowerCase()) return true
+    const isAllCapsName = name === name.toUpperCase() && name.length > 4 && /^[A-Z\s\.]+$/.test(name) && !name.includes('ADD')
+    if (isAllCapsName && !name.includes('LLC') && !name.includes('INC') && !name.includes('CORP')) return true
+    if (l.startsWith('totals') || l.startsWith('wip total') || l.startsWith('grand total') || l.startsWith('2026 monthly') || l.startsWith('monthly billing') || l.startsWith('copy cells') || l.startsWith('2025 avg')) return true
+    if (l.includes('sub-consultant') || l.includes('sub consultant') || l.includes('mark-up') || l.includes('markup')) return true
+    return false
+  }
+
+  const VALID_STATUS = new Set(['A','U','H','WIA','w','PP'])
+  const VALID_TYPES  = new Set(['SFD','MF','COM','DG','PLN','DRP','OA'])
+  const blankMonthly = () => Object.fromEntries(SYNC_MONTHS.map(m => [m.key, 0]))
+  const cleanProjNo  = v => { const s = String(v || '').trim(); if (!s || s === 'XXXXX') return ''; const f = parseFloat(s); return isNaN(f) ? s : f.toFixed(1) }
+
+  const projects = []
+  let curPM = '', curClient = '', curProj = null, curAdd = null
+  let projId = 1000, phaseId = 2000
+
+  for (const row of (sheet.rows || [])) {
+    const name   = sv(row, COL_NAME)
+    const pmRaw  = sv(row, COL_PM)
+    const projNo = cleanProjNo(cellVal(row, COL_PROJNO))
+    const feeRaw = cellVal(row, COL_FEE)
+    let scope    = sv(row, COL_SCOPE)
+    const ptype  = sv(row, COL_PTYPE)
+    const loc    = sv(row, COL_LOC, 'CA') || 'CA'
+    const status = sv(row, COL_STATUS)
+    const done   = fv(row, COL_DONE) === 1 || String(cellVal(row, COL_DONE) || '').toLowerCase() === 'true'
+    const priorPct = fv(row, COL_PRIOR)
+
+    if (!name) continue
+    if (STOP.has(name.toLowerCase().trim())) break
+    if (pmRaw && pmRaw !== 'ALL' && pmRaw !== curPM) { curPM = pmRaw; curClient = ''; curProj = null; curAdd = null }
+    if (isSkip(name, curPM)) continue
+
+    const hasFee    = feeRaw !== null && feeRaw !== '' && fv(row, COL_FEE) > 0
+    const hasProjNo = projNo !== ''
+    const isAddHdr  = !hasFee && !hasProjNo && (name.toUpperCase().startsWith('ADD ') || name.toUpperCase().startsWith('ADD#') || (name.toUpperCase().includes('ADD') && name.includes('#')))
+
+    if (!hasFee && !hasProjNo && !isAddHdr) { curClient = name; curProj = null; curAdd = null; continue }
+    if (isAddHdr) { curAdd = name; continue }
+
+    if (hasProjNo && !hasFee) {
+      const st = VALID_STATUS.has(status) ? status : 'U'
+      curProj = { id: projId++, pm: curPM || 'SR', projNo, client: curClient, project: name, type: VALID_TYPES.has(ptype) ? ptype : 'SFD', location: loc, status: st, flag: false, done, archived: false, notes: '', phases: [] }
+      curAdd = null; projects.push(curProj); continue
+    }
+
+    if (hasFee || (!hasProjNo && !isAddHdr && fv(row, COL_FEE) === 0 && scope)) {
+      if (!scope) scope = 'SD'
+      if (!curProj) {
+        const st = VALID_STATUS.has(status) ? status : 'U'
+        curProj = { id: projId++, pm: curPM || 'SR', projNo: '', client: curClient, project: curClient || name, type: 'SFD', location: loc, status: st, flag: false, done: false, archived: false, notes: '', phases: [] }
+        projects.push(curProj)
+      }
+      const fee = fv(row, COL_FEE)
+      const billed = Math.round(fee * priorPct * 100) / 100
+      const pct = Math.min(100, Math.round(priorPct * 100))
+      const monthly = blankMonthly()
+      Object.entries(MON_COLS).forEach(([colId, mk]) => {
+        const cell = row.cells?.find(c => c.columnId === +colId)
+        const v = cell?.value
+        if (v && typeof v === 'number' && v !== 0) monthly[mk] = Math.round(v * 100) / 100
+      })
+      curProj.phases.push({ id: phaseId++, name, scope, addendum: curAdd, hourly: false, caMonths: null, fee: Math.round(fee * 100) / 100, billed, pct, done, flag: false, archived: false, monthly })
+    }
+  }
+  return projects.filter(p => p.phases.length > 0)
+}
+
+const AR_SHEET_ID = 'VVvfpGPFPJGJP8PqFg3qjqW87p7pJqXFX4QJFf21'
+
+function parseARSmartsheetData(sheet, existingInvoices = []) {
+  const findCol = patterns => { for (const col of sheet.columns || []) { const t = (col.title || '').toUpperCase(); if (patterns.some(p => t.includes(p.toUpperCase()))) return col.id } return null }
+  const COL = {
+    FOLLOWUP: findCol(['FOLLOW-UP','FOLLOW UP','FOLLOWUP']),
+    BUCKET:   findCol(['DAYS PAST DUE','DAYS PAST','AGING','BUCKET']),
+    CLIENT:   findCol(['CLIENT']),
+    PM:       findCol(['PM','PROJECT MANAGER']),
+    INVOICE:  findCol(['INVOICE NUMBER','INVOICE NO','INV NO','INV #']),
+    PROJNO:   findCol(['PROJECT NUMBER','PROJECT NO','PROJ NO','PROJ #','PROJ. NO']),
+    PROJECT:  (() => { for (const col of sheet.columns || []) { const t = (col.title || '').toUpperCase(); if (t === 'PROJECT' || t === 'PROJECT NAME') return col.id } return null })(),
+    AMT_NC:   findCol(['AMOUNT - NO COMMITMENT','NO COMMITMENT']),
+    AMT_C:    findCol(['AMOUNT - COMMITMENT']),
+    NOTES:    findCol(['STATUS | COMMENTS','STATUS','COMMENTS','NOTES']),
+  }
+  const cellVal = (row, colId) => { if (!colId) return null; const cell = row.cells?.find(c => c.columnId === colId); return cell?.value ?? cell?.displayValue ?? null }
+  const sv = (row, colId, def = '') => { const v = cellVal(row, colId); if (v === null || v === undefined) return def; const s = String(v).trim(); return s === '' || s === 'nan' ? def : s }
+  const fv = (row, colId) => { const v = cellVal(row, colId); if (v === null || v === undefined || v === '') return 0; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[$,]/g, '')); return isNaN(n) ? 0 : n }
+  const BUCKETS = new Set(['0-30','30-60','60-90','90-120','120+'])
+  const SKIP_CLIENTS = new Set(['0-30','30-60','60-90','90-120','120+','0-30 days','30-60 days','60-90 days','90-120 days','120 days','totals','already collected','previous month','anticipated','flagged items total','keep','do not move','do not delete',''])
+  const isSkip = client => { const l = client.toLowerCase().trim(); if (SKIP_CLIENTS.has(l)) return true; if (l.startsWith('0-') || l.startsWith('30-') || l.startsWith('60-') || l.startsWith('90-') || l.startsWith('120') || l.startsWith('already') || l.startsWith('previous') || l.startsWith('anticipated') || l.startsWith('flagged')) return true; return false }
+  const cleanInvoiceNo = v => { const s = String(v || '').trim(); if (!s) return ''; const f = parseFloat(s); return isNaN(f) ? s : String(Math.round(f)) }
+  const cleanProjNo = v => { const s = String(v || '').trim(); if (!s) return ''; const f = parseFloat(s); return isNaN(f) ? s : f.toFixed(1) }
+  const invoiceDateFromNo = invNo => { const s = String(invNo); if (s.length >= 8) { const yr = s.slice(0,4), mo = s.slice(4,6), dy = s.slice(6,8); if (+yr > 2000 && +mo >= 1 && +mo <= 12) return `${yr}-${mo}-${dy}` } if (s.length >= 6) { const yr = s.slice(0,4), mo = s.slice(4,6); if (+yr > 2000 && +mo >= 1 && +mo <= 12) return `${yr}-${mo}-01` } return '' }
+
+  const invoices = []
+  let nextId = (existingInvoices.reduce((m, i) => Math.max(m, i.id), 0) || 5000) + 1
+  let curBucket = '0-30'
+
+  for (const row of (sheet.rows || [])) {
+    const dpd = sv(row, COL.BUCKET)
+    if (BUCKETS.has(dpd)) curBucket = dpd
+    const client = sv(row, COL.CLIENT)
+    if (!client || isSkip(client)) continue
+    const invRaw = sv(row, COL.INVOICE)
+    if (!invRaw) continue
+    const amtNC = fv(row, COL.AMT_NC), amtC = fv(row, COL.AMT_C)
+    const amount = amtNC > 0 ? amtNC : amtC
+    if (amount <= 0) continue
+    const invNo  = cleanInvoiceNo(invRaw)
+    const followUp = fv(row, COL.FOLLOWUP) === 1 || String(cellVal(row, COL.FOLLOWUP) || '').toLowerCase() === 'true'
+    invoices.push({ id: nextId++, client, pm: sv(row, COL.PM), invoiceNo: invNo, projectNo: cleanProjNo(sv(row, COL.PROJNO)), project: sv(row, COL.PROJECT), amount: Math.round(amount * 100) / 100, invoiceDate: invoiceDateFromNo(invNo), bucketOverride: curBucket, committed: amtC > 0, committedDate: null, flag: followUp, paid: false, status: sv(row, COL.NOTES) })
+  }
+  return invoices
+}
+
 export default function AppShell({ session, store }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -39,7 +201,8 @@ export default function AppShell({ session, store }) {
   const doSync = async () => {
     const token = appState.settings?.ssToken
     const sheetId = appState.settings?.sheetId
-    if (!token) { setSyncMsg('✗ No Smartsheet token — open Settings in the original app to set it'); return }
+    if (!token) { setSyncMsg('✗ No Smartsheet token — set it in Settings on feecast.app first'); return }
+    if (!sheetId) { setSyncMsg('✗ No Sheet ID — set it in Settings on feecast.app first'); return }
     setSyncing(true); setSyncMsg(null)
     try {
       const resp = await fetch('/api/smartsheet', {
@@ -47,39 +210,44 @@ export default function AppShell({ session, store }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, sheetId })
       })
-      const data = await resp.json()
-      if (resp.ok) {
-        if (data.projects) {
-          mutate(prev => ({ ...prev, projects: data.projects }))
-          setSyncMsg(`✓ Synced ${data.projects.length} projects`)
-        } else setSyncMsg('✓ Sync complete')
-      } else setSyncMsg('✗ ' + (data.error||'Sync failed'))
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        setSyncMsg('✗ ' + (err.error || `API error ${resp.status}`))
+        setSyncing(false); return
+      }
+      const sheet = await resp.json()
+      const projects = parseSmartsheetData(sheet)
+      if (!projects.length) { setSyncMsg('✗ No projects found — check Sheet ID'); setSyncing(false); return }
+      mutate(prev => ({ ...prev, projects: JSON.parse(JSON.stringify(projects)) }))
+      setSyncMsg(`✓ Synced ${projects.length} projects`)
     } catch(e) { setSyncMsg('✗ ' + e.message) }
     setSyncing(false)
-    setTimeout(() => setSyncMsg(null), 4000)
+    setTimeout(() => setSyncMsg(null), 5000)
   }
 
   const doSyncAR = async () => {
     const token = appState.settings?.ssToken
-    const sheetId = appState.settings?.sheetId
-    if (!token) { setSyncMsg('✗ No Smartsheet token — open Settings in the original app to set it'); return }
+    if (!token) { setSyncMsg('✗ No Smartsheet token — set it in Settings on feecast.app first'); return }
     setSyncingAR(true); setSyncMsg(null)
     try {
       const resp = await fetch('/api/smartsheet-ar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, sheetId })
+        body: JSON.stringify({ token, sheetId: AR_SHEET_ID })
       })
-      const data = await resp.json()
-      if (resp.ok) {
-        if (data.invoices) {
-          mutate(prev => ({ ...prev, invoices: data.invoices }))
-          setSyncMsg(`✓ Synced ${data.invoices.length} invoices`)
-        } else setSyncMsg('✓ A/R sync complete')
-      } else setSyncMsg('✗ ' + (data.error||'A/R sync failed'))
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        setSyncMsg('✗ ' + (err.error || `API error ${resp.status}`))
+        setSyncingAR(false); return
+      }
+      const sheet = await resp.json()
+      const invoices = parseARSmartsheetData(sheet, appState.invoices)
+      if (!invoices.length) { setSyncMsg('✗ No invoices found in A/R sheet'); setSyncingAR(false); return }
+      mutate(prev => ({ ...prev, invoices }))
+      setSyncMsg(`✓ Synced ${invoices.length} invoices`)
     } catch(e) { setSyncMsg('✗ ' + e.message) }
     setSyncingAR(false)
-    setTimeout(() => setSyncMsg(null), 4000)
+    setTimeout(() => setSyncMsg(null), 5000)
   }
 
   // Badge colors for presence
