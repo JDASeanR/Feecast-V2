@@ -779,6 +779,7 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
     type: typeList[0]?.code || 'SFD', location: 'CA', status: statusList[0]?.code || 'U',
     flag: false, notes: '', phases: [defaultPhase]
   })
+  const [allocPhaseIdx, setAllocPhaseIdx] = useState(null)
 
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const setPhase = (i, k, v) => setForm(p => ({
@@ -865,6 +866,7 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
             <PhaseCard key={i} phase={ph} index={i} scopeList={scopeList}
               onChange={(k, v) => setPhase(i, k, v)}
               onRemove={() => removePhase(i)}
+              onOpenAlloc={() => setAllocPhaseIdx(i)}
             />
           ))}
         </div>
@@ -887,12 +889,25 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
           <i className="ti ti-device-floppy" /> Save project
         </button>
       </div>
+
+      {/* Inline alloc modal — saves back into form state, not global */}
+      {allocPhaseIdx !== null && (
+        <AllocModal
+          project={{ id: form.id || '__new__' }}
+          phase={form.phases[allocPhaseIdx]}
+          onSave={(_, __, monthly) => {
+            setPhase(allocPhaseIdx, 'monthly', monthly)
+            setAllocPhaseIdx(null)
+          }}
+          onClose={() => setAllocPhaseIdx(null)}
+        />
+      )}
     </Modal>
   )
 }
 
 // ── PhaseCard ─────────────────────────────────────────────────────────────────
-function PhaseCard({ phase: ph, index: i, scopeList, onChange, onRemove }) {
+function PhaseCard({ phase: ph, index: i, scopeList, onChange, onRemove, onOpenAlloc }) {
   const isCA   = ph.scope === 'CA'
   const caEst  = isCA ? (ph.fee || 0) * (ph.caMonths || 12) : 0
   const feeBase = isCA ? caEst : (ph.fee || 0)
@@ -945,6 +960,22 @@ function PhaseCard({ phase: ph, index: i, scopeList, onChange, onRemove }) {
           <input type="number" value={ph.billed || 0} min={0} step={500}
             onChange={e => onChange('billed', parseFloat(e.target.value) || 0)}
             className="input text-xs w-full" />
+        </div>
+        <div className="col-span-2 flex justify-end pt-1 border-t border-sand-2 mt-1">
+          <button
+            onClick={onOpenAlloc}
+            className="btn btn-sm text-xs text-olive flex items-center gap-1"
+          >
+            <i className="ti ti-calendar-month" style={{ fontSize: 12 }} />
+            Edit allocations
+            {rem > 0 && (() => {
+              const alloc = Object.entries(ph.monthly || {}).filter(([mk]) => mk >= CUR_MK).reduce((s, [, v]) => s + v, 0)
+              const d = alloc - rem
+              if (Math.abs(d) < 1) return <span className="text-2xs text-success ml-1">✓</span>
+              if (d > 1) return <span className="text-2xs text-flag ml-1">over</span>
+              return <span className="text-2xs text-warning ml-1">{fmt(alloc)} / {fmt(rem)}</span>
+            })()}
+          </button>
         </div>
       </div>
     </div>
