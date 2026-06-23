@@ -219,7 +219,7 @@ export default function ProjectsTab({ appState, mutate }) {
 
       {/* Column headers */}
       <div className="bg-sand-2 border-b border-sand-3 px-3 py-1.5 grid text-2xs font-semibold text-olive uppercase tracking-wider"
-        style={{ gridTemplateColumns: '28px 60px 40px 1fr 56px 80px 80px 80px 60px' }}>
+        style={{ gridTemplateColumns: '28px 60px 72px 1fr 56px 80px 80px 80px 60px' }}>
         <span />
         <span />
         <span>Proj #</span>
@@ -332,7 +332,7 @@ export default function ProjectsTab({ appState, mutate }) {
               {/* PM subtotal */}
               {pmExp && (
                 <div className="grid items-center px-3 py-1.5 bg-sand-2 border-t border-sand-3 text-xs"
-                  style={{ gridTemplateColumns: '28px 60px 40px 1fr 56px 80px 80px 80px 60px' }}>
+                  style={{ gridTemplateColumns: '28px 60px 72px 1fr 56px 80px 80px 80px 60px' }}>
                   <span />
                   <span />
                   <span />
@@ -357,7 +357,7 @@ export default function ProjectsTab({ appState, mutate }) {
 
         {/* Grand total */}
         <div className="grid items-center px-3 py-2 bg-sand-2 border-t-2 border-sand-3 text-xs font-bold"
-          style={{ gridTemplateColumns: '28px 60px 40px 1fr 56px 80px 80px 80px 60px' }}>
+          style={{ gridTemplateColumns: '28px 60px 72px 1fr 56px 80px 80px 80px 60px' }}>
           <span />
           <span />
           <span />
@@ -425,7 +425,7 @@ function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
           'grid items-center px-3 py-1.5 border-b border-sand-2 hover:bg-sand cursor-pointer',
           p.archived && 'opacity-50'
         )}
-        style={{ gridTemplateColumns: '28px 60px 40px 1fr 56px 80px 80px 80px 60px', paddingLeft: 48 }}
+        style={{ gridTemplateColumns: '28px 60px 72px 1fr 56px 80px 80px 80px 60px', paddingLeft: 48 }}
       >
         {/* Expand */}
         <button onClick={onToggle} className="text-2xs text-dark-3 opacity-50 w-4">
@@ -563,7 +563,7 @@ function PhaseRow({ phase: ph, project: p, indent, onDone, onFlag, onOpenAlloc }
         'grid items-center px-3 py-1 border-b border-sand-2',
         billedOut || ph.done ? 'opacity-40' : 'hover:bg-sand'
       )}
-      style={{ gridTemplateColumns: '28px 60px 40px 1fr 56px 80px 80px 80px 60px', paddingLeft: indent }}
+      style={{ gridTemplateColumns: '28px 60px 72px 1fr 56px 80px 80px 80px 60px', paddingLeft: indent }}
     >
       {/* Controls */}
       <span />
