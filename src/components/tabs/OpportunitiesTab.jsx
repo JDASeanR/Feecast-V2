@@ -214,8 +214,8 @@ export default function OpportunitiesTab({ appState, mutate }) {
 
               return [
                 // Type header
-                <tr key={`type-${type}`} style={{ background: "#3D3935", color: "#F5F5F1", pointerEvents: "none", cursor: "default" }}>
-                  <td colSpan={3} className="px-3 py-2">
+                <tr key={`type-${type}`} style={{ background: "#3D3935", color: "#F5F5F1", pointerEvents: "none", cursor: "default" }} onMouseEnter={e => {}} onMouseLeave={e => {}}>
+                  <td colSpan={3} className="px-3 py-2" style={{ background: "#3D3935", color: "#F5F5F1" }}>
                     <span className="font-display text-sm tracking-wide">
                       <span className="opacity-50 text-xs mr-2">TYPE</span>
                       {type} — {typeLabel}
@@ -224,11 +224,11 @@ export default function OpportunitiesTab({ appState, mutate }) {
                       </span>
                     </span>
                   </td>
-                  <td />
-                  <td className="px-2 text-right text-xs opacity-70">{fmt(typeFee)}</td>
-                  <td colSpan={2} />
-                  <td className="px-2 text-right text-xs font-semibold text-terracotta-light">{fmt(typeWtd)}</td>
-                  <td colSpan={3} />
+                  <td style={{ background: "#3D3935" }} />
+                  <td className="px-2 text-right text-xs" style={{ background: "#3D3935", color: "#F5F5F1", opacity: 0.7 }}>{fmt(typeFee)}</td>
+                  <td colSpan={2} style={{ background: "#3D3935" }} />
+                  <td className="px-2 text-right text-xs font-semibold" style={{ background: "#3D3935", color: "#BD6439" }}>{fmt(typeWtd)}</td>
+                  <td colSpan={3} style={{ background: "#3D3935" }} />
                 </tr>,
 
                 // Opp rows
