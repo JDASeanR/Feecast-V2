@@ -269,6 +269,7 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                         className="input text-xs w-32" />
                     </div>
                   </div>
+
                   <div>
                     <label className="field-label">Send on days</label>
                     <div className="flex gap-3 flex-wrap">
@@ -286,14 +287,45 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                       ))}
                     </div>
                   </div>
+
+                  {/* Recipients — PM checkboxes + extras */}
                   <div>
-                    <label className="field-label">Recipients (one per line)</label>
+                    <label className="field-label">Recipients</label>
+                    {(local.pms||[]).filter(pm=>pm.email).length > 0 && (
+                      <div className="border border-sand-3 rounded-lg p-3 mb-2 space-y-2">
+                        {(local.pms||[]).filter(pm=>pm.email).map(pm => {
+                          const checked = (local.firm?.digest?.recipients||[]).map(r=>r.toLowerCase()).includes(pm.email.toLowerCase())
+                          return (
+                            <label key={pm.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input type="checkbox" checked={checked}
+                                onChange={e => {
+                                  const cur = local.firm?.digest?.recipients||[]
+                                  const next = e.target.checked
+                                    ? [...cur.filter(r=>r.toLowerCase()!==pm.email.toLowerCase()), pm.email]
+                                    : cur.filter(r=>r.toLowerCase()!==pm.email.toLowerCase())
+                                  set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),recipients:next}})
+                                }} />
+                              <span className="font-bold w-8">{pm.name}</span>
+                              <span className="text-dark-3">{pm.fullName}</span>
+                              <span className="text-dark-3 ml-auto text-2xs">{pm.email}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <label className="text-2xs text-dark-3 block mb-1">Other recipients</label>
                     <textarea
-                      value={(local.firm?.digest?.recipients||[]).join('\n')}
-                      onChange={e=>set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),recipients:e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)}})}
-                      className="input text-xs w-full h-20 font-mono resize-y"
+                      value={(local.firm?.digest?.recipients||[]).filter(r => !(local.pms||[]).map(p=>p.email?.toLowerCase()).includes(r.toLowerCase())).join('\n')}
+                      onChange={e => {
+                        const pmEmails = (local.firm?.digest?.recipients||[]).filter(r => (local.pms||[]).map(p=>p.email?.toLowerCase()).filter(Boolean).includes(r.toLowerCase()))
+                        const extras = e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)
+                        set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),recipients:[...pmEmails,...extras]}})
+                      }}
+                      className="input text-xs w-full h-16 font-mono resize-y"
                       placeholder="one@email.com&#10;two@email.com" />
+                    <div className="text-2xs text-dark-3 mt-1">For people not in the PM list above</div>
                   </div>
+
                   <div>
                     <label className="field-label">Sections to include</label>
                     <div className="space-y-2">
@@ -301,11 +333,86 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                         <label key={key} className="flex items-center gap-2 text-xs cursor-pointer">
                           <input type="checkbox"
                             checked={(local.firm?.digest?.sections||{})[key]!==false}
-                            onChange={e=>set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),sections:{...(local.firm?.digest?.sections||{}),billing:true,ar:true,flagged:true,pipeline:true,[key]:e.target.checked}}})} />
+                            onChange={e=>{
+                              const cur = local.firm?.digest?.sections||{billing:true,ar:true,flagged:true,pipeline:true}
+                              set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),sections:{...cur,[key]:e.target.checked}}})
+                            }} />
                           {label}
                         </label>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Projection Reminders */}
+                  <div className="pt-4 border-t border-sand-2">
+                    <div className="font-semibold text-xs mb-1">Projection Reminders</div>
+                    <div className="text-2xs text-dark-3 mb-3">Sends individual emails to PMs with under-allocated projects. A separate summary goes to the admin list below.</div>
+
+                    <label className="flex items-center gap-2 text-xs cursor-pointer mb-3">
+                      <input type="checkbox"
+                        checked={local.firm?.digest?.projReminder?.enabled||false}
+                        onChange={e=>set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),projReminder:{...(local.firm?.digest?.projReminder||{}),enabled:e.target.checked}}})} />
+                      Enable projection reminders
+                    </label>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="field-label">Cadence</label>
+                        <select value={local.firm?.digest?.projReminder?.cadence||'weekly'}
+                          onChange={e=>set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),projReminder:{...(local.firm?.digest?.projReminder||{}),cadence:e.target.value}}})}
+                          className="select text-xs w-full">
+                          <option value="daily">Daily (same days as digest)</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="biweekly">Bi-weekly</option>
+                        </select>
+                      </div>
+                      {(local.firm?.digest?.projReminder?.cadence||'weekly') !== 'daily' && (
+                        <div>
+                          <label className="field-label">Send on</label>
+                          <select value={local.firm?.digest?.projReminder?.day||1}
+                            onChange={e=>set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),projReminder:{...(local.firm?.digest?.projReminder||{}),day:parseInt(e.target.value)}}})}
+                            className="select text-xs w-full">
+                            {['Monday','Tuesday','Wednesday','Thursday','Friday'].map((d,i)=>(
+                              <option key={i} value={i+1}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="field-label">Summary recipients</label>
+                    {(local.pms||[]).filter(pm=>pm.email).length > 0 && (
+                      <div className="border border-sand-3 rounded-lg p-3 mb-2 space-y-2">
+                        {(local.pms||[]).filter(pm=>pm.email).map(pm => {
+                          const checked = (local.firm?.digest?.projReminder?.summaryRecipients||[]).map(r=>r.toLowerCase()).includes(pm.email.toLowerCase())
+                          return (
+                            <label key={pm.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input type="checkbox" checked={checked}
+                                onChange={e => {
+                                  const cur = local.firm?.digest?.projReminder?.summaryRecipients||[]
+                                  const next = e.target.checked
+                                    ? [...cur.filter(r=>r.toLowerCase()!==pm.email.toLowerCase()), pm.email]
+                                    : cur.filter(r=>r.toLowerCase()!==pm.email.toLowerCase())
+                                  set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),projReminder:{...(local.firm?.digest?.projReminder||{}),summaryRecipients:next}}})
+                                }} />
+                              <span className="font-bold w-8">{pm.name}</span>
+                              <span className="text-dark-3">{pm.fullName}</span>
+                              <span className="text-dark-3 ml-auto text-2xs">{pm.email}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <textarea
+                      value={(local.firm?.digest?.projReminder?.summaryRecipients||[]).filter(r=>!(local.pms||[]).map(p=>p.email?.toLowerCase()).filter(Boolean).includes(r.toLowerCase())).join('\n')}
+                      onChange={e=>{
+                        const pmEmails=(local.firm?.digest?.projReminder?.summaryRecipients||[]).filter(r=>(local.pms||[]).map(p=>p.email?.toLowerCase()).filter(Boolean).includes(r.toLowerCase()))
+                        const extras=e.target.value.split('\n').map(x=>x.trim()).filter(Boolean)
+                        set('firm',{...local.firm,digest:{...(local.firm?.digest||{}),projReminder:{...(local.firm?.digest?.projReminder||{}),summaryRecipients:[...pmEmails,...extras]}}})
+                      }}
+                      className="input text-xs w-full h-14 font-mono resize-y"
+                      placeholder="one@email.com&#10;two@email.com" />
+                    <div className="text-2xs text-dark-3 mt-1">Receives a single summary of all under-allocated phases across all PMs</div>
                   </div>
                 </div>
               </Section>
