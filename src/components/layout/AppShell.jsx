@@ -269,6 +269,12 @@ export default function AppShell({ session, store }) {
       <header style={{ background: '#3D3935', color: '#F5F5F1' }}
         className="px-4 py-2 flex items-center gap-2 shrink-0">
 
+        {/* Logo */}
+        {appState?.settings?.firm?.logo && (
+          <img src={appState.settings.firm.logo} alt="firm logo"
+            style={{ height:28, maxWidth:80, objectFit:"contain", marginRight:4, opacity:0.92 }} />
+        )}
+
         {/* Wordmark */}
         <div className="font-display tracking-display mr-3" style={{ fontSize: 22, letterSpacing: '0.02em' }}>
           FEE<span style={{ color: '#BD6439' }}>CAST</span>
