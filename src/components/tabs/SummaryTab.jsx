@@ -248,7 +248,7 @@ export default function SummaryTab({ appState }) {
     const monthlyGoalUsed = pmMonthlyGoal||Math.round(monthlyGoal*backlogShare)
     const coverage      = n3Goal>0?Math.round(n3Alloc/n3Goal*100):0
     const coverageColor = coverage>100?'#736F4C':coverage>=80?'#BD6439':'#3D3935'
-    const coverageIcon  = coverage>=80?'✓':coverage>=60?'⚡':'⚠️'
+    const coverageIcon  = coverage>100?'✓✓':coverage>=80?'✓':'–'
     const pmPipeline    = activeOpps.filter(o=>o.pm===pm).reduce((s,o)=>s+Math.round((o.fee||0)*(o.confidence||50)/100),0)
     const totalCap      = backlog+pmPipeline
     const monthsOfWork  = monthlyGoalUsed>0?Math.round(totalCap/monthlyGoalUsed*10)/10:0
