@@ -373,8 +373,8 @@ export default function SummaryTab({ appState }) {
             <div style={{ marginBottom:12, fontSize:12, color:'#736F4C' }}>
               Coverage = next 3 months allocated vs. proportional billing goal &nbsp;·&nbsp;
               <span style={{ color:'#BD6439' }}>✓ ≥80%</span> &nbsp;
-              <span style={{ color:'#BD6439' }}>⚡ 60–80%</span> &nbsp;
-              <span style={{ color:'#3D3935' }}>⚠️ &lt;60%</span>
+              <span style={{ color:'#BD6439' }}>60–80%</span> &nbsp;
+              <span style={{ color:'#3D3935' }}>&lt;60%</span>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
@@ -383,7 +383,7 @@ export default function SummaryTab({ appState }) {
                     <Th left>PM</Th>
                     <Th>Backlog</Th>
                     <Th>Mo Goal</Th>
-                    {n3Mks.map(mk=><Th key={mk}>{new Date(mk+'-01').toLocaleDateString('en-US',{month:'short'})}</Th>)}
+                    {n3Mks.map(mk=><Th key={mk}>{new Date(mk+'-01').toLocaleDateString('en-US',{month:'short',year:'2-digit'})}</Th>)}
                     <Th>3 Mo Goal</Th>
                     <Th>Coverage</Th>
                     <Th>Pipeline (wtd)</Th>
