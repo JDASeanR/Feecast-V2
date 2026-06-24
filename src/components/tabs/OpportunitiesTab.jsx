@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { fmt, fmtK, clsx, CY, CM, CUR_MK } from '../../lib/utils'
+import { fmt, fmtK, clsx, CY, CM, CUR_MK, useLocalPref } from '../../lib/utils'
 
 const OPP_STATUSES = ['01 Radar', '02 Proposal Requested', '03 Proposal Sent', '04 Won', '05 Lost']
 
@@ -32,8 +32,8 @@ export default function OpportunitiesTab({ appState, mutate }) {
   const typeList = settings.projectTypes || []
 
   const [search,      setSearch]      = useState('')
-  const [filterPM,    setFilterPM]    = useState('ALL')
-  const [filterSt,    setFilterSt]    = useState('active')
+  const [filterPM,    setFilterPM]    = useLocalPref('opp.filterPM', 'ALL')
+  const [filterSt,    setFilterSt]    = useLocalPref('opp.filterSt', 'active')
   const [editingOpp,  setEditingOpp]  = useState(null)  // null | opp | 'new'
   const [allocOpp,    setAllocOpp]    = useState(null)  // null | opp
   const [convertingOpp, setConvertingOpp] = useState(null)

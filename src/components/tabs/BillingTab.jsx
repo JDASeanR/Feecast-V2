@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { fmt, clsx, CY, CM, CUR_MK } from '../../lib/utils'
+import { fmt, clsx, CY, CM, CUR_MK, useLocalPref } from '../../lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const N_MONTHS = 18
@@ -63,12 +63,12 @@ export default function BillingTab({ appState, mutate }) {
   const hourlyData  = settings.billing?.hourlyByMonth || {}
 
   // ── Local UI state ────────────────────────────────────────────────────────
-  const [filterPM,       setFilterPM]       = useState('ALL')
-  const [showPast,       setShowPast]        = useState(false)
-  const [hideBilledOut,  setHideBilledOut]   = useState(false)
-  const [showPhases,     setShowPhases]      = useState(true)
-  const [expandedPM,     setExpandedPM]      = useState({})
-  const [expandedClient, setExpandedClient]  = useState({})
+  const [filterPM,       setFilterPM]       = useLocalPref('bill.filterPM', 'ALL')
+  const [showPast,       setShowPast]        = useLocalPref('bill.showPast', false)
+  const [hideBilledOut,  setHideBilledOut]   = useLocalPref('bill.hideBilledOut', false)
+  const [showPhases,     setShowPhases]      = useLocalPref('bill.showPhases', true)
+  const [expandedPM,     setExpandedPM]      = useLocalPref('bill.expPM', {})
+  const [expandedClient, setExpandedClient]  = useLocalPref('bill.expClient', {})
 
   const visMonths = showPast ? ALL_MONTHS : ALL_MONTHS.filter(m => !m.isPast)
 

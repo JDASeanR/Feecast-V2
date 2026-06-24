@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { fmt, clsx, CUR_MK, CY, CM } from '../../lib/utils'
+import { fmt, clsx, CUR_MK, CY, CM, useLocalPref } from '../../lib/utils'
 
 // ── Phase calc helpers ────────────────────────────────────────────────────────
 const phCAEst  = ph => ph.scope === 'CA' ? (ph.fee || 0) * (ph.caMonths || 12) : 0
@@ -57,19 +57,19 @@ export default function ProjectsTab({ appState, mutate }) {
   const typeList  = settings.projectTypes || []
   const clientList = settings.clients || []
 
-  // ── Filters ───────────────────────────────────────────────────────────────
+  // ── Filters (persisted) ────────────────────────────────────────────────────
   const [search,         setSearch]         = useState('')
-  const [filterPM,       setFilterPM]       = useState('ALL')
-  const [filterStatus,   setFilterStatus]   = useState('ALL')
-  const [showArchived,   setShowArchived]   = useState(false)
-  const [hideDone,       setHideDone]       = useState(false)
-  const [hideDonePhases, setHideDonePhases] = useState(false)
+  const [filterPM,       setFilterPM]       = useLocalPref('proj.filterPM', 'ALL')
+  const [filterStatus,   setFilterStatus]   = useLocalPref('proj.filterStatus', 'ALL')
+  const [showArchived,   setShowArchived]   = useLocalPref('proj.showArchived', false)
+  const [hideDone,       setHideDone]       = useLocalPref('proj.hideDone', false)
+  const [hideDonePhases, setHideDonePhases] = useLocalPref('proj.hideDonePhases', false)
 
-  // ── Expand/collapse ───────────────────────────────────────────────────────
-  const [expandedPM,      setExpandedPM]      = useState({})
-  const [expandedClient,  setExpandedClient]  = useState({})
-  const [expandedProject, setExpandedProject] = useState({})
-  const [expandedAdd,     setExpandedAdd]     = useState({})
+  // ── Expand/collapse (persisted) ───────────────────────────────────────────
+  const [expandedPM,      setExpandedPM]      = useLocalPref('proj.expPM', {})
+  const [expandedClient,  setExpandedClient]  = useLocalPref('proj.expClient', {})
+  const [expandedProject, setExpandedProject] = useLocalPref('proj.expProject', {})
+  const [expandedAdd,     setExpandedAdd]     = useLocalPref('proj.expAdd', {})
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const [editingProject,  setEditingProject]  = useState(null) // null | project | 'new'

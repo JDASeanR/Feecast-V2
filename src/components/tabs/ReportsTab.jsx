@@ -4,7 +4,7 @@ import FinancialReportPDF from './FinancialReportPDF.jsx'
 import ProjectStatusPDF from './ProjectStatusPDF.jsx'
 import ARAgingPDF from './ARAgingPDF.jsx'
 import OpportunitiesPDF from './OpportunitiesPDF.jsx'
-import { fmt, clsx } from '../../lib/utils'
+import { fmt, clsx, useLocalPref } from '../../lib/utils'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CY = new Date().getFullYear()
@@ -412,14 +412,14 @@ export default function ReportsTab({ appState }) {
   const defaultFrom = `${CY}-01`
   const defaultTo   = CUR_MK
 
-  const [rType,     setRType]     = useState('financial')
-  const [rPM,       setRPM]       = useState('ALL')
-  const [rClient,   setRClient]   = useState('ALL')
-  const [rFrom,     setRFrom]     = useState(defaultFrom)
-  const [rTo,       setRTo]       = useState(defaultTo)
-  const [rSort,     setRSort]     = useState('pm')
-  const [rHideDone, setRHideDone] = useState(false)
-  const [rTemplate, setRTemplate] = useState('letterhead')
+  const [rType,     setRType]     = useLocalPref('rpt.type', 'financial')
+  const [rPM,       setRPM]       = useLocalPref('rpt.pm', 'ALL')
+  const [rClient,   setRClient]   = useLocalPref('rpt.client', 'ALL')
+  const [rFrom,     setRFrom]     = useLocalPref('rpt.from', defaultFrom)
+  const [rTo,       setRTo]       = useLocalPref('rpt.to', defaultTo)
+  const [rSort,     setRSort]     = useLocalPref('rpt.sort', 'pm')
+  const [rHideDone, setRHideDone] = useLocalPref('rpt.hideDone', false)
+  const [rTemplate, setRTemplate] = useLocalPref('rpt.template', 'letterhead')
   const [preview,   setPreview]   = useState(null)
 
   const generate = useCallback(() => {

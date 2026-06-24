@@ -88,6 +88,26 @@ export const pYTD = p =>
 export const pRem = p =>
   (p.phases || []).reduce((s, ph) => s + phRem(ph), 0)
 
+// ── Persistent UI preferences ───────────────────────────────────────────────
+
+import { useState, useCallback } from 'react'
+
+export function useLocalPref(key, defaultValue) {
+  const storageKey = 'fc_' + key
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      return stored !== null ? JSON.parse(stored) : defaultValue
+    } catch { return defaultValue }
+  })
+  const set = useCallback(v => {
+    const next = typeof v === 'function' ? v(value) : v
+    setValue(next)
+    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch {}
+  }, [storageKey, value])
+  return [value, set]
+}
+
 // ── Misc ─────────────────────────────────────────────────────────────────────
 
 export const clsx = (...args) =>

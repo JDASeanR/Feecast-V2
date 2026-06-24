@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { fmt, fmtK, clsx } from '../../lib/utils'
+import { fmt, fmtK, clsx, useLocalPref } from '../../lib/utils'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const AR_BUCKETS = ['0-30', '30-60', '60-90', '90-120', '120+']
@@ -40,12 +40,12 @@ export default function ARTab({ appState, mutate }) {
   const pmList = (settings.pms || []).map(p => p.name)
 
   const [search,     setSearch]    = useState('')
-  const [filterPM,   setFilterPM]  = useState('ALL')
-  const [filterBucket, setFilterBucket] = useState('ALL')
-  const [showPaid,   setShowPaid]  = useState(false)
-  const [showFlagged, setShowFlagged] = useState(false)
-  const [sortKey,    setSortKey]   = useState('days')
-  const [sortDir,    setSortDir]   = useState(-1)
+  const [filterPM,   setFilterPM]  = useLocalPref('ar.filterPM', 'ALL')
+  const [filterBucket, setFilterBucket] = useLocalPref('ar.filterBucket', 'ALL')
+  const [showPaid,   setShowPaid]  = useLocalPref('ar.showPaid', false)
+  const [showFlagged, setShowFlagged] = useLocalPref('ar.showFlagged', false)
+  const [sortKey,    setSortKey]   = useLocalPref('ar.sortKey', 'days')
+  const [sortDir,    setSortDir]   = useLocalPref('ar.sortDir', -1)
   const [editingInv, setEditingInv] = useState(null)
 
   const open    = invoices.filter(i => !i.paid)

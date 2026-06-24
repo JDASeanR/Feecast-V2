@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
-import { clsx } from '../../lib/utils'
+import { clsx, useLocalPref } from '../../lib/utils'
 
 import PlaceholderTab from './PlaceholderTab.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -189,8 +189,15 @@ function parseARSmartsheetData(sheet, existingInvoices = []) {
 }
 
 export default function AppShell({ session, store }) {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useLocalPref('activeTab', 'dashboard')
+  const [tabOrder, setTabOrder] = useLocalPref('tabOrder', TABS.map(t => t.id))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [dragTab, setDragTab] = useState(null)
+
+  const orderedTabs = tabOrder
+    .map(id => TABS.find(t => t.id === id))
+    .filter(Boolean)
+    .concat(TABS.filter(t => !tabOrder.includes(t.id)))
   const [syncing, setSyncing] = useState(false)
   const [syncingAR, setSyncingAR] = useState(false)
   const [syncMsg, setSyncMsg] = useState(null)
@@ -364,7 +371,7 @@ export default function AppShell({ session, store }) {
       {/* Tab nav — Vellum surface, Terracotta underline on active */}
       <nav style={{ background: '#F5F5F1', borderBottom: '1px solid rgba(61,57,53,0.12)' }}
         className="px-2 flex gap-0 shrink-0 overflow-x-auto">
-        {TABS.map(tab => {
+        {orderedTabs.map(tab => {
           const isActive = activeTab === tab.id
           let badge = null
           if (tab.id === 'followup') {
@@ -376,6 +383,25 @@ export default function AppShell({ session, store }) {
           return (
             <button
               key={tab.id}
+              draggable
+              onDragStart={() => setDragTab(tab.id)}
+              onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderLeft = '2px solid #BD6439' }}
+              onDragLeave={e => { e.currentTarget.style.borderLeft = 'none' }}
+              onDrop={e => {
+                e.currentTarget.style.borderLeft = 'none'
+                if (!dragTab || dragTab === tab.id) return
+                setTabOrder(prev => {
+                  const order = [...prev]
+                  const fromIdx = order.indexOf(dragTab)
+                  const toIdx = order.indexOf(tab.id)
+                  if (fromIdx === -1 || toIdx === -1) return prev
+                  order.splice(fromIdx, 1)
+                  order.splice(toIdx, 0, dragTab)
+                  return order
+                })
+                setDragTab(null)
+              }}
+              onDragEnd={() => setDragTab(null)}
               onClick={() => setActiveTab(tab.id)}
               className="relative flex flex-col items-center gap-0.5 px-3 py-2 cursor-pointer transition-colors whitespace-nowrap font-display tracking-eyebrow uppercase"
               style={{
@@ -384,6 +410,7 @@ export default function AppShell({ session, store }) {
                 borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
                 background: 'transparent',
                 border: 'none',
+                opacity: dragTab === tab.id ? 0.4 : 1,
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#3D3935' }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#8a8580' }}
