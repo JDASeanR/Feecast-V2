@@ -256,7 +256,7 @@ export default function DashboardTab({ appState, onNavigate }) {
                   <div style={{ width:26, fontSize:10, color:'#736F4C', flexShrink:0, letterSpacing:'0.03em' }}>{MONTHS_SHORT[r.m-1]}</div>
                   <div style={{ flex:1, position:'relative' }}>
                     <div style={{ position:'absolute', left:`${goalLine}%`, top:0, bottom:0, width:1, background:'rgba(61,57,53,0.18)', zIndex:1 }} />
-                    <div style={{ height:16, background:'rgba(61,57,53,0.05)', borderRadius:3, position:'relative', overflow:'hidden' }}>
+                    <div style={{ height:11, background:'rgba(61,57,53,0.05)', borderRadius:3, position:'relative', overflow:'hidden' }}>
                       {v>0 && <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${bp}%`, background:bc, borderRadius:3 }} />}
                       {oppAmt>0 && <div style={{ position:'absolute', left:`${bp}%`, top:0, height:'100%', width:`${Math.min(100-bp,opp)}%`, background:'rgba(189,100,57,0.22)', borderRadius:3 }} />}
                     </div>
@@ -344,7 +344,7 @@ function SignalCard({ label, value, sub, warn, accent, onClick }) {
     <div onClick={onClick} style={{
       background:'#ECEAE3', borderRadius:5,
       border:'1px solid rgba(61,57,53,0.1)',
-      borderTop: warn ? '2px solid #BD6439' : accent ? '2px solid #BD6439' : '2px solid transparent',
+      borderTop: '2px solid #BD6439',
       padding:'10px 14px', cursor:onClick?'pointer':'default',
     }}>
       <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:8 }}>{label}</div>
