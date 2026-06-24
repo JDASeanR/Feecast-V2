@@ -498,6 +498,7 @@ export default function ReportsTab({ appState }) {
       handleExportPDF()
       return
     }
+    alert('Using react-pdf path')
     setExporting(true)
     try {
       const doc = (
