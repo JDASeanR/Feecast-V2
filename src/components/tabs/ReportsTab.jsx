@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { pdf as renderPDF } from '@react-pdf/renderer'
 import FinancialReportPDF from './FinancialReportPDF.jsx'
+import ProjectStatusPDF from './ProjectStatusPDF.jsx'
+import ARAgingPDF from './ARAgingPDF.jsx'
+import OpportunitiesPDF from './OpportunitiesPDF.jsx'
 import { fmt, clsx } from '../../lib/utils'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -494,28 +497,25 @@ export default function ReportsTab({ appState }) {
   }
 
   const handleExportReactPDF = async () => {
-    if (rType !== 'financial') {
-      handleExportPDF()
-      return
-    }
-    
     setExporting(true)
     try {
-      const doc = (
-        <FinancialReportPDF
-          appState={appState}
-          pm={rPM}
-          client={rClient}
-          fromMk={rFrom}
-          toMk={rTo}
-          logo={appState.settings?.firm?.logo}
-        />
-      )
+      const stateWithSort = { ...appState, rSort, rHideDone }
+      const logoSrc = appState.settings?.firm?.logo
+      let doc
+      if (rType === 'financial') {
+        doc = <FinancialReportPDF appState={appState} pm={rPM} client={rClient} fromMk={rFrom} toMk={rTo} logo={logoSrc} />
+      } else if (rType === 'project') {
+        doc = <ProjectStatusPDF appState={stateWithSort} pm={rPM} client={rClient} fromMk={rFrom} toMk={rTo} logo={logoSrc} />
+      } else if (rType === 'ar') {
+        doc = <ARAgingPDF appState={stateWithSort} pm={rPM} client={rClient} logo={logoSrc} />
+      } else if (rType === 'pipeline') {
+        doc = <OpportunitiesPDF appState={stateWithSort} pm={rPM} client={rClient} logo={logoSrc} />
+      }
       const blob = await renderPDF(doc).toBlob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
-      a.download = 'Firm-Financial-Summary-' + new Date().toISOString().slice(0,10) + '.pdf'
+      a.download = getReportName() + '-' + new Date().toISOString().slice(0,10) + '.pdf'
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
