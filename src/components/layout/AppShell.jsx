@@ -314,7 +314,7 @@ export default function AppShell({ session, store }) {
             <button key={label} onClick={onClick} disabled={disabled}
               className="inline-flex items-center gap-1 px-2.5 py-1 font-display tracking-ui uppercase transition-colors cursor-pointer"
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 background: 'transparent',
                 color: '#F5F5F1',
                 border: '0.5px solid rgba(245,245,241,0.25)',
@@ -324,23 +324,23 @@ export default function AppShell({ session, store }) {
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.6)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.25)'}
             >
-              <i className={`ti ${icon}`} style={{ fontSize: 12 }} /> {label}
+              <i className={`ti ${icon}`} style={{ fontSize: 13 }} /> {label}
             </button>
           ))}
 
           {/* Presence badges */}
           {presence.filter(u => u !== session.user.email).map((email, i) => (
             <div key={email} title={email}
-              className="w-6 h-6 rounded-full flex items-center justify-center font-display shrink-0"
-              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], color: '#F5F5F1', fontSize: 9 }}>
+              className="w-8 h-8 rounded-full flex items-center justify-center font-display shrink-0"
+              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], color: '#F5F5F1', fontSize: 11 }}>
               {initials(email)}
             </div>
           ))}
 
           {/* Current user */}
           <div title={session.user.email}
-            className="w-6 h-6 rounded-full flex items-center justify-center font-display shrink-0"
-            style={{ background: '#3D3935', color: '#F5F5F1', fontSize: 9, border: '1.5px solid #BD6439' }}>
+            className="w-8 h-8 rounded-full flex items-center justify-center font-display shrink-0"
+            style={{ background: '#3D3935', color: '#F5F5F1', fontSize: 11, border: '1.5px solid #BD6439' }}>
             {initials(session.user.email)}
           </div>
 
@@ -379,7 +379,7 @@ export default function AppShell({ session, store }) {
               onClick={() => setActiveTab(tab.id)}
               className="relative flex flex-col items-center gap-0.5 px-3 py-2 cursor-pointer transition-colors whitespace-nowrap font-display tracking-eyebrow uppercase"
               style={{
-                fontSize: 9,
+                fontSize: 10,
                 color: isActive ? '#3D3935' : '#8a8580',
                 borderBottom: isActive ? '2px solid #BD6439' : '2px solid transparent',
                 background: 'transparent',
