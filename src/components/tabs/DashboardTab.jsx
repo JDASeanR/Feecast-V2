@@ -48,11 +48,9 @@ const CM = new Date().getMonth() + 1
 const phCAEst = ph => ph.scope==='CA'?(ph.fee||0)*(ph.caMonths||12):0
 const phFeeFC = ph => ph.scope==='CA'?phCAEst(ph):(ph.fee||0)
 function phYTD(ph) { let s=0; for(let m=1;m<CM;m++){const mk=`${CY}-${String(m).padStart(2,'0')}`;s+=ph.monthly?.[mk]||0;} return s; }
-const phRem   = ph => Math.max(0, phFeeFC(ph)-(ph.billed||0)-phYTD(ph))
-const pFee    = p  => (p.phases||[]).reduce((s,ph)=>s+phFeeFC(ph),0)
-const pBil    = p  => (p.phases||[]).reduce((s,ph)=>s+(ph.billed||0),0)
-const pYTD    = p  => (p.phases||[]).reduce((s,ph)=>s+phYTD(ph),0)
-const pRem    = p  => pFee(p)-pBil(p)-pYTD(p)
+const pFee = p => (p.phases||[]).reduce((s,ph)=>s+phFeeFC(ph),0)
+const pBil = p => (p.phases||[]).reduce((s,ph)=>s+(ph.billed||0),0)
+const pRem = p => pFee(p)-pBil(p)-(p.phases||[]).reduce((s,ph)=>s+phYTD(ph),0)
 
 function mTotalAll(mk, projects) {
   return projects.reduce((s,p)=>s+p.phases.reduce((ps,ph)=>ps+(ph.monthly?.[mk]||0),0),0)
@@ -61,29 +59,29 @@ function mTotal(mk, projects) {
   return projects.filter(p=>!p.archived).reduce((s,p)=>s+p.phases.reduce((ps,ph)=>ps+(ph.monthly?.[mk]||0),0),0)
 }
 
-// ── Popover component ─────────────────────────────────────────────────────────
+// ── Popover ───────────────────────────────────────────────────────────────────
 function Popover({ trigger, title, children }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
     if (!open) return
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [open])
   return (
-    <div ref={ref} style={{ position:'relative', display:'inline-block' }}>
+    <div ref={ref} style={{ position:'relative' }}>
       <div onClick={() => setOpen(p=>!p)}>{trigger}</div>
       {open && (
         <div style={{
-          position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:50,
+          position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:100,
           background:'#F5F5F1', border:'1px solid rgba(61,57,53,0.15)',
-          borderRadius:6, boxShadow:'0 4px 24px rgba(61,57,53,0.12)',
-          padding:'20px 24px', minWidth:360, maxWidth:480,
+          borderRadius:6, padding:'20px 24px', minWidth:380,
+          boxShadow:'0 8px 32px rgba(61,57,53,0.14)',
         }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:16, letterSpacing:'0.04em', textTransform:'uppercase', color:'#3D3935' }}>{title}</div>
-            <button onClick={() => setOpen(false)} style={{ background:'none', border:'none', color:'#736F4C', cursor:'pointer', fontSize:16, padding:0 }}>✕</button>
+            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:15, letterSpacing:'0.06em', textTransform:'uppercase', color:'#3D3935' }}>{title}</div>
+            <button onClick={()=>setOpen(false)} style={{ background:'none', border:'none', color:'#736F4C', cursor:'pointer', fontSize:14 }}>✕</button>
           </div>
           {children}
         </div>
@@ -92,288 +90,219 @@ function Popover({ trigger, title, children }) {
   )
 }
 
-// ── Main Dashboard ────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function DashboardTab({ appState, onNavigate }) {
   const { projects, invoices, opportunities, settings } = appState
-  const hourlyData   = settings.billing?.hourlyByMonth || {}
-  const monthlyGoal  = settings.billing?.monthlyGoal || 395000
-  const annualGoal   = settings.billing?.annualGoal || 4740000
-  const billable     = settings.employees?.billable || 12
-  const totEmp       = settings.employees?.total || 17
+  const hourlyData  = settings.billing?.hourlyByMonth || {}
+  const monthlyGoal = settings.billing?.monthlyGoal || 395000
+  const annualGoal  = settings.billing?.annualGoal || 4740000
+  const billable    = settings.employees?.billable || 12
+  const totEmp      = settings.employees?.total || 17
 
-  const active      = projects.filter(p=>!p.archived)
-  const activeOpps  = opportunities.filter(o=>!o.archived&&o.status!=='04 Won'&&o.status!=='05 Lost')
-  const openAR      = invoices.filter(i=>!i.paid&&(i.amount||0)>0)
+  const active     = projects.filter(p=>!p.archived)
+  const activeOpps = opportunities.filter(o=>!o.archived&&o.status!=='04 Won'&&o.status!=='05 Lost')
+  const openAR     = invoices.filter(i=>!i.paid&&(i.amount||0)>0)
 
   const BILLING_YTD = []
   for (let m=1; m<CM; m++) {
     const mk = `${CY}-${String(m).padStart(2,'0')}`
-    const ff = mTotalAll(mk, projects)
-    const hourly = hourlyData[mk]||0
+    const ff = mTotalAll(mk, projects), hourly = hourlyData[mk]||0
     BILLING_YTD.push({ m, mk, ff, hourly, gross:ff+hourly, goal:monthlyGoal })
   }
-
   const BILLING_YEAR = []
   for (let m=1; m<=12; m++) {
     const mk = `${CY}-${String(m).padStart(2,'0')}`
     const isPast = m < CM
-    const ff     = isPast ? mTotalAll(mk, projects) : 0
-    const hourly = isPast ? (hourlyData[mk]||0) : 0
-    const projFF   = !isPast ? mTotal(mk, projects) : 0
-    const projHourly = !isPast ? (hourlyData[mk]||0) : 0
+    const ff = isPast?mTotalAll(mk,projects):0, hourly=isPast?(hourlyData[mk]||0):0
+    const projFF=!isPast?mTotal(mk,projects):0, projHourly=!isPast?(hourlyData[mk]||0):0
     BILLING_YEAR.push({ m, mk, ff, hourly, gross:ff+hourly, goal:monthlyGoal, isPast, projFF, projHourly })
   }
 
-  const ytdFF    = BILLING_YTD.reduce((s,r)=>s+r.ff,0)
+  const ytdFF     = BILLING_YTD.reduce((s,r)=>s+r.ff,0)
   const ytdHourly = BILLING_YTD.reduce((s,r)=>s+r.hourly,0)
-  const ytdGross = BILLING_YTD.reduce((s,r)=>s+r.gross,0)
-  const ytdGoal  = BILLING_YTD.reduce((s,r)=>s+r.goal,0)
-  const ytdN     = BILLING_YTD.length
+  const ytdGross  = BILLING_YTD.reduce((s,r)=>s+r.gross,0)
+  const ytdGoal   = BILLING_YTD.reduce((s,r)=>s+r.goal,0)
+  const ytdN      = BILLING_YTD.length
 
-  const tF  = active.reduce((s,p)=>s+pFee(p),0)
-  const tB  = active.reduce((s,p)=>s+pBil(p),0)
+  const tF   = active.reduce((s,p)=>s+pFee(p),0)
+  const tB   = active.reduce((s,p)=>s+pBil(p),0)
   const tYTD = Array.from({length:CM-1},(_,i)=>mTotalAll(`${CY}-${String(i+1).padStart(2,'0')}`,projects)).reduce((s,v)=>s+v,0)
-  const tR  = tF-tB-tYTD
+  const tR   = tF-tB-tYTD
   const fWIP = tF>0?(tB+tYTD)/tF:0
 
   let futureFF = 0
-  for(let m=CM; m<=12; m++) { const mk=`${CY}-${String(m).padStart(2,'0')}`; futureFF+=mTotal(mk,projects)+(hourlyData[mk]||0); }
+  for(let m=CM;m<=12;m++){const mk=`${CY}-${String(m).padStart(2,'0')}`;futureFF+=mTotal(mk,projects)+(hourlyData[mk]||0);}
   const projFF = ytdFF+ytdHourly+futureFF
 
   const pipelineWtd = activeOpps.reduce((s,o)=>s+(o.fee||0)*((o.confidence||50)/100),0)
-  const contractedBacklogMo = monthlyGoal>0?tR/monthlyGoal:0
-  const combinedBacklogMo   = monthlyGoal>0?(tR+pipelineWtd)/monthlyGoal:0
-
+  const contractedBkMo = monthlyGoal>0?tR/monthlyGoal:0
+  const combinedBkMo   = monthlyGoal>0?(tR+pipelineWtd)/monthlyGoal:0
   const ffPB = ytdN?ytdFF/ytdN/billable:0
   const ffPT = ytdN?ytdFF/ytdN/totEmp:0
 
   const arB = {}; AR_BUCKETS.forEach(b=>{arB[b]=0})
   openAR.forEach(i=>{const b=effBucket(i);arB[b]=(arB[b]||0)+(i.amount||0)})
-  const arTot   = Object.values(arB).reduce((s,v)=>s+v,0)
-  const arPD    = arTot-(arB['0-30']||0)
+  const arTot    = Object.values(arB).reduce((s,v)=>s+v,0)
+  const arPD     = arTot-(arB['0-30']||0)
   const ar90plus = openAR.filter(i=>['90-120','120+'].includes(effBucket(i))).length
-
   const projFlags = active.filter(p=>p.flag||p.phases.some(ph=>ph.flag)).length
-  const pctGoal   = ytdGoal>0?Math.round(ytdGross/ytdGoal*100):0
-  const pctProj   = annualGoal>0?Math.round(projFF/annualGoal*100):0
+
+  const pctGoal = ytdGoal>0?Math.round(ytdGross/ytdGoal*100):0
+  const pctProj = annualGoal>0?Math.round(projFF/annualGoal*100):0
 
   const oppMTotal = mk => activeOpps.reduce((s,o)=>s+(o.monthly?.[mk]||0)*((o.confidence||50)/100),0)
   const allBarVals = BILLING_YEAR.map(r=>(r.isPast?r.gross:(r.projFF+r.projHourly))+oppMTotal(r.mk))
   const maxBV = Math.max(...allBarVals, monthlyGoal)*1.15||1
 
-  const Q1 = BILLING_YTD.filter(r=>r.m<=3&&r.gross>0)
-  const Q2 = BILLING_YTD.filter(r=>r.m>=4&&r.m<=6&&r.gross>0)
-  const q1v = Q1.length?Q1.reduce((s,r)=>s+r.gross,0)/Q1.length:null
-  const q2v = Q2.length?Q2.reduce((s,r)=>s+r.gross,0)/Q2.length:null
-  const ytdAvg  = ytdN?ytdGross/ytdN:0
-  const prev1avg = Object.values(HIST_ALL[CY-1]||{}).reduce((s,d)=>s+(d.g||0),0)/12
-  const prev2avg = Object.values(HIST_ALL[CY-2]||{}).reduce((s,d)=>s+(d.g||0),0)/12
+  const Q1=BILLING_YTD.filter(r=>r.m<=3&&r.gross>0), Q2=BILLING_YTD.filter(r=>r.m>=4&&r.m<=6&&r.gross>0)
+  const q1v=Q1.length?Q1.reduce((s,r)=>s+r.gross,0)/Q1.length:null
+  const q2v=Q2.length?Q2.reduce((s,r)=>s+r.gross,0)/Q2.length:null
+  const ytdAvg=ytdN?ytdGross/ytdN:0
+  const prev1avg=Object.values(HIST_ALL[CY-1]||{}).reduce((s,d)=>s+(d.g||0),0)/12
+  const prev2avg=Object.values(HIST_ALL[CY-2]||{}).reduce((s,d)=>s+(d.g||0),0)/12
 
-  const [yoyYears, setYoyYears] = useState([CY, CY-1, CY-2])
+  const [yoyYears,setYoyYears] = useState([CY,CY-1,CY-2])
   const availYears = Object.keys(HIST_ALL).map(Number).filter(y=>Object.values(HIST_ALL[y]).some(d=>d.g)).sort((a,b)=>b-a)
   const YOY_COLORS = ['#BD6439','#736F4C','#3D3935']
-
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})
 
   return (
-    <div style={{ background:'#F5F5F1', padding:'16px', display:'flex', flexDirection:'column', gap:12, minHeight:'100%' }}>
+    <div style={{ background:'#F5F5F1', padding:14, display:'flex', flexDirection:'column', gap:10, height:'100%', overflow:'hidden' }}>
 
-      {/* ── Hero strip ── */}
-      <div style={{ background:'#3D3935', borderRadius:6, padding:'16px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      {/* ── Hero ── */}
+      <div style={{ background:'#3D3935', borderRadius:6, padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div>
-          <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:22, letterSpacing:'0.04em', textTransform:'uppercase', color:'#F5F5F1', lineHeight:1 }}>JD+A Projections Dashboard</div>
-          <div style={{ fontSize:11, color:'rgba(245,245,241,0.5)', marginTop:4 }}>{CY} · Live from tracker</div>
+          <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, letterSpacing:'0.04em', textTransform:'uppercase', color:'#F5F5F1', lineHeight:1 }}>JD+A Projections Dashboard</div>
+          <div style={{ fontSize:10, color:'rgba(245,245,241,0.45)', marginTop:3 }}>{CY} · Live from tracker</div>
         </div>
-        {/* Hero KPIs inline */}
-        <div style={{ display:'flex', gap:32, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:28, alignItems:'center' }}>
           <HeroKPI label={`Billed YTD (${ytdN} mo)`} value={fmtK(ytdGross)} sub={`${pctGoal}% of ${fmtK(ytdGoal)} goal`} accent={pctGoal>=100} />
-          <div style={{ width:1, height:40, background:'rgba(245,245,241,0.15)' }} />
-          <HeroKPI label="Projected Full Year" value={fmtK(projFF)} sub={`${pctProj}% of ${fmtK(annualGoal)} goal`} accent={pctProj>=100} />
-          <div style={{ width:1, height:40, background:'rgba(245,245,241,0.15)' }} />
-          <HeroKPI label="Firm WIP" value={Math.round(fWIP*100)+'%'} sub={`${fmtK(tB+tYTD)} billed of ${fmtK(tF)}`} />
-          <div style={{ width:1, height:40, background:'rgba(245,245,241,0.15)' }} />
-          <HeroKPI label="Backlog" value={`${contractedBacklogMo.toFixed(1)} mo`} sub={`${fmtK(tR)} contracted · ${fmtK(tR+pipelineWtd)} w/ pipeline`} />
+          <Sep /><HeroKPI label="Projected Full Year" value={fmtK(projFF)} sub={`${pctProj}% of ${fmtK(annualGoal)} goal`} accent={pctProj>=100} />
+          <Sep /><HeroKPI label="Firm WIP" value={Math.round(fWIP*100)+'%'} sub={`${fmtK(tB+tYTD)} of ${fmtK(tF)}`} />
+          <Sep /><HeroKPI label="Backlog" value={`${contractedBkMo.toFixed(1)} mo`} sub={`${fmtK(tR)} contracted · ${fmtK(tR+pipelineWtd)} w/ pipeline`} />
         </div>
-        <div style={{ fontSize:11, color:'rgba(245,245,241,0.4)', textAlign:'right' }}>{dateStr}</div>
+        <div style={{ fontSize:10, color:'rgba(245,245,241,0.35)' }}>{dateStr}</div>
       </div>
 
-      {/* ── Row 2: Signal strip (A/R + Follow-up) ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:8 }}>
+      {/* ── Signal strip ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:8, flexShrink:0 }}>
+        <SignalCard label="A/R Past Due" value={fmtK(arPD)} sub={`of ${fmtK(arTot)} total A/R`} warn={arPD>0} onClick={()=>onNavigate('ar')} />
+        <SignalCard label="A/R 90+ Days" value={ar90plus} sub="invoices overdue" warn={ar90plus>0} onClick={()=>onNavigate('ar')} />
+        <SignalCard label="Pipeline (wtd)" value={fmtK(pipelineWtd)} sub={`${activeOpps.length} active opportunities`} accent onClick={()=>onNavigate('opportunities')} />
+        <SignalCard label="Project Flags" value={projFlags} sub="projects flagged" warn={projFlags>0} onClick={()=>onNavigate('followup')} />
 
-        {/* A/R Past Due */}
-        <SignalCard
-          label="A/R Past Due"
-          value={fmtK(arPD)}
-          sub={`of ${fmtK(arTot)} total A/R`}
-          warn={arPD > 0}
-          onClick={() => onNavigate('ar')}
-        />
-
-        {/* A/R 90+ */}
-        <SignalCard
-          label="A/R 90+ Days"
-          value={ar90plus}
-          sub="invoices overdue"
-          warn={ar90plus > 0}
-          onClick={() => onNavigate('ar')}
-        />
-
-        {/* Pipeline */}
-        <SignalCard
-          label="Pipeline (wtd)"
-          value={fmtK(pipelineWtd)}
-          sub={`${activeOpps.length} active opportunities`}
-          accent
-          onClick={() => onNavigate('opportunities')}
-        />
-
-        {/* Project flags */}
-        <SignalCard
-          label="Project Flags"
-          value={projFlags}
-          sub="projects flagged"
-          warn={projFlags > 0}
-          onClick={() => onNavigate('followup')}
-        />
-
-        {/* More stats popover */}
-        <div style={{ background:'#ECEAE3', borderRadius:5, border:'1px solid rgba(61,57,53,0.12)', padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:6 }}>More Stats</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            <Popover
-              trigger={
-                <button style={{ fontSize:11, color:'#BD6439', background:'none', border:'none', cursor:'pointer', textAlign:'left', padding:0, display:'flex', alignItems:'center', gap:4 }}>
-                  <i className="ti ti-chart-line" style={{fontSize:12}} /> Year-over-Year ↗
-                </button>
-              }
-              title="Year-over-Year"
-            >
-              <YOYChart years={yoyYears} setYears={setYoyYears} availYears={availYears} colors={YOY_COLORS} projects={projects} />
-            </Popover>
-            <Popover
-              trigger={
-                <button style={{ fontSize:11, color:'#BD6439', background:'none', border:'none', cursor:'pointer', textAlign:'left', padding:0, display:'flex', alignItems:'center', gap:4 }}>
-                  <i className="ti ti-users" style={{fontSize:12}} /> FF Per Employee ↗
-                </button>
-              }
-              title="FF Per Employee"
-            >
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                <StatBox label={`Per billable (${billable})`} value={fmtK(ffPB)} sub={`${ytdN}-mo YTD avg`} />
-                <StatBox label={`Per total staff (${totEmp})`} value={fmtK(ffPT)} sub={`${ytdN}-mo YTD avg`} />
-              </div>
-            </Popover>
-            <Popover
-              trigger={
-                <button style={{ fontSize:11, color:'#BD6439', background:'none', border:'none', cursor:'pointer', textAlign:'left', padding:0, display:'flex', alignItems:'center', gap:4 }}>
-                  <i className="ti ti-calendar-stats" style={{fontSize:12}} /> Quarterly Avgs ↗
-                </button>
-              }
-              title="Quarterly Averages"
-            >
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:16 }}>
-                {[['Q1','Jan–Mar',q1v],['Q2','Apr–Jun',q2v],['Q3','Jul–Sep',null],['Q4','Oct–Dec',null]].map(([l,m,v])=>(
-                  <div key={l} style={{ background:'#ECEAE3', borderRadius:4, padding:'10px 12px', textAlign:'center' }}>
-                    <div style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:4 }}>{l}</div>
-                    <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color: v?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#b0aca0' }}>{v?fmtK(v):'—'}</div>
-                    <div style={{ fontSize:10, color:'#736F4C', marginTop:2 }}>{m}</div>
+        {/* More stats */}
+        <div style={{ background:'#ECEAE3', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', borderTop:'2px solid #BD6439', padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between', position:'relative' }}>
+          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10 }}>More Stats</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {[
+              { icon:'ti-chart-line', label:'Year-over-Year', title:'Year-over-Year', content: <YOYChart years={yoyYears} setYears={setYoyYears} availYears={availYears} colors={YOY_COLORS} projects={projects} /> },
+              { icon:'ti-users', label:'FF Per Employee', title:'FF Per Employee', content: (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                  <StatBox label={`Per billable (${billable})`} value={fmtK(ffPB)} sub={`${ytdN}-mo YTD avg`} />
+                  <StatBox label={`Per total (${totEmp})`} value={fmtK(ffPT)} sub={`${ytdN}-mo YTD avg`} />
+                </div>
+              )},
+              { icon:'ti-calendar-stats', label:'Quarterly Avgs', title:'Quarterly Averages', content: (
+                <div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
+                    {[['Q1','Jan–Mar',q1v],['Q2','Apr–Jun',q2v],['Q3','Jul–Sep',null],['Q4','Oct–Dec',null]].map(([l,m,v])=>(
+                      <div key={l} style={{ background:'#ECEAE3', borderRadius:4, padding:'10px', textAlign:'center' }}>
+                        <div style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{l}</div>
+                        <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, color:v?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#b0aca0' }}>{v?fmtK(v):'—'}</div>
+                        <div style={{ fontSize:10, color:'#736F4C', marginTop:2 }}>{m}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, borderTop:'1px solid rgba(61,57,53,0.1)', paddingTop:12 }}>
-                <StatBox label={`${CY} avg`} value={fmtK(ytdAvg)} />
-                <StatBox label={`${CY-1} avg`} value={fmtK(prev1avg)} muted />
-                <StatBox label={`${CY-2} avg`} value={fmtK(prev2avg)} muted />
-              </div>
-            </Popover>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, borderTop:'1px solid rgba(61,57,53,0.1)', paddingTop:12 }}>
+                    <StatBox label={`${CY} avg`} value={fmtK(ytdAvg)} />
+                    <StatBox label={`${CY-1} avg`} value={fmtK(prev1avg)} muted />
+                    <StatBox label={`${CY-2} avg`} value={fmtK(prev2avg)} muted />
+                  </div>
+                </div>
+              )},
+            ].map(({icon,label,title,content})=>(
+              <Popover key={label} title={title} trigger={
+                <button style={{ fontSize:12, color:'#BD6439', background:'none', border:'none', cursor:'pointer', textAlign:'left', padding:0, display:'flex', alignItems:'center', gap:6, fontFamily:'inherit' }}>
+                  <i className={`ti ${icon}`} style={{fontSize:13}} /> {label} <span style={{opacity:0.5,fontSize:11}}>↗</span>
+                </button>
+              }>{content}</Popover>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Row 3: Monthly bars + A/R breakdown ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:12, flex:1, minHeight:0 }}>
+      {/* ── Main content: bar chart + A/R ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:10, flex:1, minHeight:0 }}>
 
-        {/* Monthly bar chart */}
-        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px' }}>
-          <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10 }}>
-            <div>
-              <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C' }}>{CY} Monthly Projections</div>
-            </div>
+        {/* Monthly bars */}
+        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10, flexShrink:0 }}>
+            <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C' }}>{CY} Monthly Projections</div>
             <div style={{ fontSize:10, color:'#736F4C' }}>Goal: {fmtK(monthlyGoal)}/mo</div>
           </div>
 
-          {/* Goal line indicator */}
-          <div style={{ position:'relative' }}>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
             {BILLING_YEAR.map(r => {
               const v = r.isPast ? r.gross : (r.projFF + r.projHourly)
               const oppAmt = oppMTotal(r.mk)
               const bp  = Math.min(100, v/maxBV*100)
               const opp = Math.min(100, oppAmt/maxBV*100)
               const goalLine = Math.min(100, monthlyGoal/maxBV*100)
-              const bc  = r.isPast ? (v>=monthlyGoal?'#736F4C':'#BD6439') : 'rgba(115,111,76,0.45)'
+              const bc  = r.isPast ? (v>=monthlyGoal?'#736F4C':'#BD6439') : 'rgba(115,111,76,0.4)'
               const vs  = r.isPast ? v - r.goal : null
               return (
-                <div key={r.mk} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                  <div style={{ width:28, fontSize:10, color:'#736F4C', flexShrink:0, letterSpacing:'0.04em' }}>{MONTHS_SHORT[r.m-1]}</div>
+                <div key={r.mk} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <div style={{ width:26, fontSize:10, color:'#736F4C', flexShrink:0, letterSpacing:'0.03em' }}>{MONTHS_SHORT[r.m-1]}</div>
                   <div style={{ flex:1, position:'relative' }}>
-                    {/* Goal hairline */}
-                    <div style={{ position:'absolute', left:`${goalLine}%`, top:0, bottom:0, width:1, background:'rgba(61,57,53,0.2)', zIndex:1 }} />
-                    <div style={{ height:14, background:'rgba(61,57,53,0.06)', borderRadius:3, position:'relative', overflow:'hidden' }}>
-                      {v > 0 && <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${bp}%`, background:bc, borderRadius:3, transition:'width 0.3s' }} />}
-                      {oppAmt > 0 && <div style={{ position:'absolute', left:`${bp}%`, top:0, height:'100%', width:`${opp}%`, background:'rgba(189,100,57,0.25)', borderRadius:3 }} />}
+                    <div style={{ position:'absolute', left:`${goalLine}%`, top:0, bottom:0, width:1, background:'rgba(61,57,53,0.18)', zIndex:1 }} />
+                    <div style={{ height:16, background:'rgba(61,57,53,0.05)', borderRadius:3, position:'relative', overflow:'hidden' }}>
+                      {v>0 && <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${bp}%`, background:bc, borderRadius:3 }} />}
+                      {oppAmt>0 && <div style={{ position:'absolute', left:`${bp}%`, top:0, height:'100%', width:`${Math.min(100-bp,opp)}%`, background:'rgba(189,100,57,0.22)', borderRadius:3 }} />}
                     </div>
                   </div>
-                  <div style={{ width:130, flexShrink:0, textAlign:'right', fontSize:11 }}>
-                    <span style={{ fontWeight:600, color: r.isPast?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#736F4C' }}>
+                  <div style={{ width:148, flexShrink:0, display:'flex', alignItems:'baseline', gap:6, justifyContent:'flex-end' }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:r.isPast?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#736F4C' }}>
                       {v ? fmtK(v) : '—'}
                     </span>
-                    {vs !== null && (
-                      <span style={{ fontSize:10, color: vs>=0?'#736F4C':'#BD6439', marginLeft:4 }}>
-                        {vs>=0?'+':''}{fmtK(vs)}
-                      </span>
-                    )}
-                    {oppAmt > 0 && (
-                      <span style={{ fontSize:10, color:'rgba(189,100,57,0.7)', marginLeft:4 }}>+{fmtK(oppAmt)}</span>
-                    )}
+                    {vs!==null && <span style={{ fontSize:10, color:vs>=0?'#736F4C':'#BD6439' }}>{vs>=0?'+':''}{fmtK(vs)}</span>}
+                    {oppAmt>0 && <span style={{ fontSize:10, color:'rgba(189,100,57,0.65)' }}>+{fmtK(oppAmt)}</span>}
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Legend */}
-          <div style={{ display:'flex', gap:16, marginTop:8, fontSize:10, color:'#736F4C', borderTop:'1px solid rgba(61,57,53,0.08)', paddingTop:8 }}>
-            <span style={{ display:'flex', alignItems:'center', gap:4 }}><span style={{ width:10, height:10, borderRadius:2, background:'#736F4C', display:'inline-block' }} /> At/above goal</span>
-            <span style={{ display:'flex', alignItems:'center', gap:4 }}><span style={{ width:10, height:10, borderRadius:2, background:'#BD6439', display:'inline-block' }} /> Below goal</span>
-            <span style={{ display:'flex', alignItems:'center', gap:4 }}><span style={{ width:10, height:10, borderRadius:2, background:'rgba(115,111,76,0.45)', display:'inline-block' }} /> Projected</span>
-            {activeOpps.length > 0 && <span style={{ display:'flex', alignItems:'center', gap:4 }}><span style={{ width:10, height:10, borderRadius:2, background:'rgba(189,100,57,0.25)', display:'inline-block' }} /> Pipeline</span>}
+          <div style={{ display:'flex', gap:16, marginTop:10, paddingTop:8, borderTop:'1px solid rgba(61,57,53,0.08)', flexShrink:0 }}>
+            {[['#736F4C','At/above goal'],['#BD6439','Below goal'],['rgba(115,111,76,0.4)','Projected'],['rgba(189,100,57,0.22)','Pipeline']].map(([c,l])=>(
+              <span key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#736F4C' }}>
+                <span style={{ width:10, height:10, borderRadius:2, background:c, display:'inline-block', flexShrink:0 }} />{l}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* A/R breakdown */}
-        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', cursor:'pointer', display:'flex', flexDirection:'column' }} onClick={() => onNavigate('ar')}>
-          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:12 }}>
+        {/* A/R */}
+        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', cursor:'pointer', display:'flex', flexDirection:'column' }} onClick={()=>onNavigate('ar')}>
+          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10, flexShrink:0 }}>
             A/R Collections <span style={{ color:'#BD6439' }}>↗</span>
           </div>
 
-          {/* Total */}
-          <div style={{ marginBottom:12 }}>
-            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:32, letterSpacing:'0.02em', color:'#3D3935', lineHeight:1 }}>{fmtK(arTot)}</div>
-            <div style={{ fontSize:11, color:'#736F4C', marginTop:2 }}>total outstanding</div>
+          <div style={{ marginBottom:14, flexShrink:0 }}>
+            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:34, letterSpacing:'0.02em', color:'#3D3935', lineHeight:1 }}>{fmtK(arTot)}</div>
+            <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>total outstanding</div>
           </div>
 
-          {/* Bucket bars */}
-          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
             {AR_BUCKETS.map(b => {
-              const amt = arB[b]||0
-              const pct = arTot>0 ? Math.round(amt/arTot*100) : 0
+              const amt = arB[b]||0, pct = arTot>0?Math.round(amt/arTot*100):0
               return (
                 <div key={b}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#736F4C', marginBottom:2 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#736F4C', marginBottom:3 }}>
                     <span>{AR_LABELS[b]}</span>
-                    <span style={{ fontWeight:600, color:'#3D3935' }}>{fmt(amt)} <span style={{ fontWeight:400, color:'#736F4C' }}>{pct}%</span></span>
+                    <span><span style={{ fontWeight:600, color:'#3D3935' }}>{fmt(amt)}</span> <span style={{ color:'#736F4C' }}>{pct}%</span></span>
                   </div>
-                  <div style={{ height:6, background:'rgba(61,57,53,0.08)', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ height:5, background:'rgba(61,57,53,0.07)', borderRadius:3, overflow:'hidden' }}>
                     <div style={{ height:'100%', width:`${pct}%`, background:AR_COLORS[b], borderRadius:3 }} />
                   </div>
                 </div>
@@ -381,15 +310,14 @@ export default function DashboardTab({ appState, onNavigate }) {
             })}
           </div>
 
-          {/* Summary */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:14, paddingTop:12, borderTop:'1px solid rgba(61,57,53,0.1)' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:14, paddingTop:12, borderTop:'1px solid rgba(61,57,53,0.1)', flexShrink:0 }}>
             <div>
-              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, color:'#BD6439' }}>{fmtK(arPD)}</div>
-              <div style={{ fontSize:10, color:'#736F4C' }}>Past due</div>
+              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#BD6439', lineHeight:1 }}>{fmtK(arPD)}</div>
+              <div style={{ fontSize:10, color:'#736F4C', marginTop:3 }}>Past due</div>
             </div>
             <div>
-              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, color:'#736F4C' }}>{fmtK(arB['0-30']||0)}</div>
-              <div style={{ fontSize:10, color:'#736F4C' }}>Current (0–30)</div>
+              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#736F4C', lineHeight:1 }}>{fmtK(arB['0-30']||0)}</div>
+              <div style={{ fontSize:10, color:'#736F4C', marginTop:3 }}>Current (0–30)</div>
             </div>
           </div>
         </div>
@@ -398,13 +326,15 @@ export default function DashboardTab({ appState, onNavigate }) {
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const Sep = () => <div style={{ width:1, height:36, background:'rgba(245,245,241,0.12)', flexShrink:0 }} />
+
 function HeroKPI({ label, value, sub, accent }) {
   return (
     <div style={{ textAlign:'right' }}>
-      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(245,245,241,0.5)', marginBottom:4 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:26, letterSpacing:'0.02em', color: accent ? '#BD6439' : '#F5F5F1', lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:10, color:'rgba(245,245,241,0.4)', marginTop:3 }}>{sub}</div>
+      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(245,245,241,0.45)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', color:accent?'#BD6439':'#F5F5F1', lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:10, color:'rgba(245,245,241,0.38)', marginTop:3 }}>{sub}</div>
     </div>
   )
 }
@@ -413,12 +343,13 @@ function SignalCard({ label, value, sub, warn, accent, onClick }) {
   return (
     <div onClick={onClick} style={{
       background:'#ECEAE3', borderRadius:5,
-      border: warn ? '1px solid rgba(189,100,57,0.3)' : '1px solid rgba(61,57,53,0.1)',
-      padding:'10px 14px', cursor: onClick?'pointer':'default',
+      border:'1px solid rgba(61,57,53,0.1)',
+      borderTop: warn ? '2px solid #BD6439' : accent ? '2px solid #BD6439' : '2px solid transparent',
+      padding:'10px 14px', cursor:onClick?'pointer':'default',
     }}>
-      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:6 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:26, letterSpacing:'0.02em', lineHeight:1, color: warn?'#BD6439': accent?'#BD6439':'#3D3935' }}>{value}</div>
-      <div style={{ fontSize:10, color:'#736F4C', marginTop:4 }}>{sub}</div>
+      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:8 }}>{label}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', lineHeight:1, color:warn?'#BD6439':accent?'#BD6439':'#3D3935' }}>{value}</div>
+      <div style={{ fontSize:10, color:'#736F4C', marginTop:6 }}>{sub}</div>
     </div>
   )
 }
@@ -427,7 +358,7 @@ function StatBox({ label, value, sub, muted }) {
   return (
     <div>
       <div style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color: muted?'#736F4C':'#3D3935' }}>{value}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:muted?'#736F4C':'#3D3935' }}>{value}</div>
       {sub && <div style={{ fontSize:10, color:'#736F4C', marginTop:2 }}>{sub}</div>}
     </div>
   )
@@ -441,13 +372,12 @@ function YOYChart({ years, setYears, availYears, colors, projects }) {
   const yLabels = [0,Math.round(maxV*0.5),Math.round(maxV)]
   return (
     <div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:12 }}>
         {availYears.slice(0,10).map(y=>(
           <button key={y} onClick={()=>setYears(prev=>prev.includes(y)?prev.filter(x=>x!==y):prev.length<3?[...prev,y].sort((a,b)=>b-a):prev)}
-            style={{ fontSize:11, padding:'3px 10px', borderRadius:3, border:'1px solid', cursor:'pointer',
-              background: years.includes(y)?'#3D3935':'transparent',
-              color: years.includes(y)?'#F5F5F1':'#736F4C',
-              borderColor: years.includes(y)?'#3D3935':'rgba(61,57,53,0.2)' }}>
+            style={{ fontSize:11, padding:'3px 10px', borderRadius:3, border:'1px solid', cursor:'pointer', fontFamily:'inherit',
+              background:years.includes(y)?'#3D3935':'transparent', color:years.includes(y)?'#F5F5F1':'#736F4C',
+              borderColor:years.includes(y)?'#3D3935':'rgba(61,57,53,0.2)' }}>
             {y}
           </button>
         ))}
@@ -455,7 +385,7 @@ function YOYChart({ years, setYears, availYears, colors, projects }) {
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{overflow:'visible',display:'block'}}>
         {yLabels.map(v=>(
           <g key={v}>
-            <line x1={pL} x2={W-pR} y1={pT+yS(v)} y2={pT+yS(v)} stroke="#ECEAE3" strokeWidth="0.5" />
+            <line x1={pL} x2={W-pR} y1={pT+yS(v)} y2={pT+yS(v)} stroke="#ECEAE3" strokeWidth="0.5"/>
             <text x={pL-3} y={pT+yS(v)+3} textAnchor="end" fontSize="8" fill="#a09c85">{fmtK(v)}</text>
           </g>
         ))}
@@ -463,17 +393,16 @@ function YOYChart({ years, setYears, availYears, colors, projects }) {
           <text key={i} x={pL+(i/11)*cW} y={H-2} textAnchor="middle" fontSize="8" fill="#a09c85">{m}</text>
         ))}
         {years.map((y,yi)=>{
-          const CY = new Date().getFullYear()
-          const CM = new Date().getMonth()+1
-          const data = y===CY
-            ? Array.from({length:CM-1},(_,i)=>({i,v:mTotalAll(`${CY}-${String(i+1).padStart(2,'0')}`,projects)})).filter(d=>d.v>0)
+          const _CY=new Date().getFullYear(), _CM=new Date().getMonth()+1
+          const data = y===_CY
+            ? Array.from({length:_CM-1},(_,i)=>({i,v:mTotalAll(`${_CY}-${String(i+1).padStart(2,'0')}`,projects)})).filter(d=>d.v>0)
             : Object.entries(HIST_ALL[y]||{}).map(([m,d])=>({i:+m-1,v:d.g||0})).filter(d=>d.v)
-          if(!data.length) return null
+          if(!data.length)return null
           const pts=data.map(d=>`${pL+(d.i/11)*cW},${pT+yS(d.v)}`).join(' ')
           return (
             <g key={y}>
-              <polyline points={pts} fill="none" stroke={colors[yi]} strokeWidth={yi===0?2:1.5} strokeDasharray={yi>0?'4 3':undefined} opacity={yi>1?0.7:1} />
-              {data.map(d=><circle key={d.i} cx={pL+(d.i/11)*cW} cy={pT+yS(d.v)} r="2" fill={colors[yi]} />)}
+              <polyline points={pts} fill="none" stroke={colors[yi]} strokeWidth={yi===0?2:1.5} strokeDasharray={yi>0?'4 3':undefined} opacity={yi>1?0.7:1}/>
+              {data.map(d=><circle key={d.i} cx={pL+(d.i/11)*cW} cy={pT+yS(d.v)} r="2" fill={colors[yi]}/>)}
             </g>
           )
         })}
@@ -481,7 +410,7 @@ function YOYChart({ years, setYears, availYears, colors, projects }) {
       <div style={{ display:'flex', gap:16, marginTop:8 }}>
         {years.map((y,i)=>(
           <span key={y} style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, color:'#736F4C' }}>
-            <span style={{ width:14, height:2, background:colors[i], display:'inline-block' }} /> {y}
+            <span style={{ width:14, height:2, background:colors[i], display:'inline-block' }}/> {y}
           </span>
         ))}
       </div>
