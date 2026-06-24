@@ -83,11 +83,11 @@ function PMHeatmap({ pmData, activeOpps }) {
       <table style={{ borderCollapse:'separate', borderSpacing:4, width:'100%', tableLayout:'fixed', minWidth:560 }}>
         <thead>
           <tr>
-            <th style={{ width:44, textAlign:'left', fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', fontWeight:600, border:'none', background:'transparent' }}>PM</th>
+            <th style={{ width:44, textAlign:'left', fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', fontWeight:600, border:'none', background:'transparent' }}>PM</th>
             {months.map(m => (
-              <th key={m.key} style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', textAlign:'center', fontWeight:600, border:'none', background:'transparent' }}>{m.label}</th>
+              <th key={m.key} style={{ fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', textAlign:'center', fontWeight:600, border:'none', background:'transparent' }}>{m.label}</th>
             ))}
-            <th style={{ width:56, fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', textAlign:'right', fontWeight:600, border:'none', background:'transparent' }}>Goal</th>
+            <th style={{ width:56, fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', padding:'4px 0', textAlign:'right', fontWeight:600, border:'none', background:'transparent' }}>Goal</th>
           </tr>
         </thead>
         <tbody>
@@ -117,7 +117,7 @@ function PMHeatmap({ pmData, activeOpps }) {
                           {alloc > 0 ? fmtK(alloc) : ''}
                         </div>
                         {pipe > 0 && (
-                          <div style={{ fontSize:10, color:s.pipeColor, borderTop:`1px dashed ${s.pipeColor}`, paddingTop:3, marginTop:2, width:'80%', textAlign:'center', flexShrink:0 }}>
+                          <div style={{ fontSize:11, color:s.pipeColor, borderTop:`1px dashed ${s.pipeColor}`, paddingTop:3, marginTop:2, width:'80%', textAlign:'center', flexShrink:0 }}>
                             +{fmtK(pipe)}
                           </div>
                         )}
@@ -134,7 +134,7 @@ function PMHeatmap({ pmData, activeOpps }) {
 
           {/* Firm totals row */}
           <tr>
-            <td style={{ padding:0, border:'none', verticalAlign:'middle', height:84, fontSize:10, letterSpacing:'0.1em', textTransform:'uppercase', color:'#736F4C', fontWeight:700, paddingRight:8 }}>Firm</td>
+            <td style={{ padding:0, border:'none', verticalAlign:'middle', height:84, fontSize:11, letterSpacing:'0.1em', textTransform:'uppercase', color:'#736F4C', fontWeight:700, paddingRight:8 }}>Firm</td>
             {months.map(m => {
               const mAlloc = pmData.reduce((s,d)=>s+d.pmProjects.reduce((ps,p)=>ps+p.phases.reduce((phs,ph)=>phs+(ph.monthly?.[m.key]||0),0),0),0)
               const mGoal  = pmData.reduce((s,d)=>s+(d.monthlyGoalUsed||0),0)
@@ -146,7 +146,7 @@ function PMHeatmap({ pmData, activeOpps }) {
                   <div style={{ borderRadius:5, border:`1px solid ${s.border}`, background:s.bg, width:'100%', height:84, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', paddingTop:14, gap:2, overflow:'hidden' }}>
                     <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:24, fontWeight:700, lineHeight:1, letterSpacing:'0.02em', color:s.text }}>{pct>0?`${pct}%`:'—'}</div>
                     <div style={{ fontSize:11, fontWeight:600, color:s.text }}>{fmtK(mAlloc)}</div>
-                    {mPipe>0 && <div style={{ fontSize:10, color:s.pipeColor, borderTop:`1px dashed ${s.pipeColor}`, paddingTop:3, marginTop:2, width:'80%', textAlign:'center' }}>+{fmtK(mPipe)}</div>}
+                    {mPipe>0 && <div style={{ fontSize:11, color:s.pipeColor, borderTop:`1px dashed ${s.pipeColor}`, paddingTop:3, marginTop:2, width:'80%', textAlign:'center' }}>+{fmtK(mPipe)}</div>}
                   </div>
                 </td>
               )
@@ -170,7 +170,7 @@ function KPI({ label, sub, value, accent, delta }) {
     <div style={{ background:'#ECEAE3', borderRadius:4, padding:'12px 14px' }}>
       <div className="eyebrow mb-1">{label}</div>
       <div className="font-display tracking-display leading-none" style={{ fontSize:24, color }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#736F4C', marginTop:4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:4 }}>{sub}</div>}
     </div>
   )
 }
@@ -181,7 +181,7 @@ function MetricCell({ label, sub, value, warn, accent }) {
     <div>
       <div className="eyebrow mb-1">{label}</div>
       <div className="font-display tracking-display leading-none" style={{ fontSize:20, color }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#736F4C', marginTop:3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>{sub}</div>}
     </div>
   )
 }
@@ -326,7 +326,7 @@ export default function SummaryTab({ appState }) {
                   <td className="text-right" style={{ color:'#736F4C' }}>{fmt(rem)}</td>
                   <td className="text-right">{w}%</td>
                   <td className="text-right">{d.flags>0
-                    ? <span style={{ color:'#c0392b', fontWeight:700 }}>{d.flags} <i className="ti ti-flag-filled" style={{fontSize:10}} /></span>
+                    ? <span style={{ color:'#c0392b', fontWeight:700 }}>{d.flags} <i className="ti ti-flag-filled" style={{fontSize:11}} /></span>
                     : '—'}
                   </td>
                 </tr>
@@ -401,7 +401,7 @@ export default function SummaryTab({ appState }) {
                       <td className="px-3 py-2 text-right">
                         {d.hasCustomGoal
                           ? <span style={{ color:'#736F4C', fontWeight:600 }}>{fmt(d.monthlyGoalUsed)}</span>
-                          : <span style={{ color:'#8a8580' }}>{fmt(d.monthlyGoalUsed)} <span style={{ fontSize:10 }}>(auto)</span></span>
+                          : <span style={{ color:'#8a8580' }}>{fmt(d.monthlyGoalUsed)} <span style={{ fontSize:11 }}>(auto)</span></span>
                         }
                       </td>
                       {d.n3Months.map((v,i)=>(

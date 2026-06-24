@@ -173,7 +173,7 @@ export default function DashboardTab({ appState, onNavigate }) {
       <div style={{ background:'#3D3935', borderRadius:6, padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div>
           <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, letterSpacing:'0.04em', textTransform:'uppercase', color:'#F5F5F1', lineHeight:1 }}>JD+A Projections Dashboard</div>
-          <div style={{ fontSize:10, color:'rgba(245,245,241,0.45)', marginTop:3 }}>{CY} · Live from tracker</div>
+          <div style={{ fontSize:11, color:'rgba(245,245,241,0.45)', marginTop:3 }}>{CY} · Live from tracker</div>
         </div>
         <div style={{ display:'flex', gap:28, alignItems:'center' }}>
           <HeroKPI label={`Billed YTD (${ytdN} mo)`} value={fmtK(ytdGross)} sub={`${pctGoal}% of ${fmtK(ytdGoal)} goal`} accent={pctGoal>=100} />
@@ -181,7 +181,7 @@ export default function DashboardTab({ appState, onNavigate }) {
           <Sep /><HeroKPI label="Firm WIP" value={Math.round(fWIP*100)+'%'} sub={`${fmtK(tB+tYTD)} of ${fmtK(tF)}`} />
           <Sep /><HeroKPI label="Backlog" value={`${contractedBkMo.toFixed(1)} mo`} sub={`${fmtK(tR)} contracted · ${fmtK(tR+pipelineWtd)} w/ pipeline`} />
         </div>
-        <div style={{ fontSize:10, color:'rgba(245,245,241,0.35)' }}>{dateStr}</div>
+        <div style={{ fontSize:11, color:'rgba(245,245,241,0.35)' }}>{dateStr}</div>
       </div>
 
       {/* ── Signal strip ── */}
@@ -193,7 +193,7 @@ export default function DashboardTab({ appState, onNavigate }) {
 
         {/* More stats */}
         <div style={{ background:'#ECEAE3', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', borderTop:'2px solid #BD6439', padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between', position:'relative' }}>
-          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10 }}>More Stats</div>
+          <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10 }}>More Stats</div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {[
               { icon:'ti-chart-line', label:'Year-over-Year', title:'Year-over-Year', content: <YOYChart years={yoyYears} setYears={setYoyYears} availYears={availYears} colors={YOY_COLORS} projects={projects} /> },
@@ -208,9 +208,9 @@ export default function DashboardTab({ appState, onNavigate }) {
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
                     {[['Q1','Jan–Mar',q1v],['Q2','Apr–Jun',q2v],['Q3','Jul–Sep',null],['Q4','Oct–Dec',null]].map(([l,m,v])=>(
                       <div key={l} style={{ background:'#ECEAE3', borderRadius:4, padding:'10px', textAlign:'center' }}>
-                        <div style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{l}</div>
+                        <div style={{ fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{l}</div>
                         <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, color:v?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#b0aca0' }}>{v?fmtK(v):'—'}</div>
-                        <div style={{ fontSize:10, color:'#736F4C', marginTop:2 }}>{m}</div>
+                        <div style={{ fontSize:11, color:'#736F4C', marginTop:2 }}>{m}</div>
                       </div>
                     ))}
                   </div>
@@ -238,8 +238,8 @@ export default function DashboardTab({ appState, onNavigate }) {
         {/* Monthly bars */}
         <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
           <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10, flexShrink:0 }}>
-            <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C' }}>{CY} Monthly Projections</div>
-            <div style={{ fontSize:10, color:'#736F4C' }}>Goal: {fmtK(monthlyGoal)}/mo</div>
+            <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C' }}>{CY} Monthly Projections</div>
+            <div style={{ fontSize:11, color:'#736F4C' }}>Goal: {fmtK(monthlyGoal)}/mo</div>
           </div>
 
           <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
@@ -253,7 +253,7 @@ export default function DashboardTab({ appState, onNavigate }) {
               const vs  = r.isPast ? v - r.goal : null
               return (
                 <div key={r.mk} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:26, fontSize:10, color:'#736F4C', flexShrink:0, letterSpacing:'0.03em' }}>{MONTHS_SHORT[r.m-1]}</div>
+                  <div style={{ width:26, fontSize:11, color:'#736F4C', flexShrink:0, letterSpacing:'0.03em' }}>{MONTHS_SHORT[r.m-1]}</div>
                   <div style={{ flex:1, position:'relative' }}>
                     <div style={{ position:'absolute', left:`${goalLine}%`, top:0, bottom:0, width:1, background:'rgba(61,57,53,0.18)', zIndex:1 }} />
                     <div style={{ height:11, background:'rgba(61,57,53,0.05)', borderRadius:3, position:'relative', overflow:'hidden' }}>
@@ -265,8 +265,8 @@ export default function DashboardTab({ appState, onNavigate }) {
                     <span style={{ fontSize:12, fontWeight:600, color:r.isPast?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#736F4C' }}>
                       {v ? fmtK(v) : '—'}
                     </span>
-                    {vs!==null && <span style={{ fontSize:10, color:vs>=0?'#736F4C':'#BD6439' }}>{vs>=0?'+':''}{fmtK(vs)}</span>}
-                    {oppAmt>0 && <span style={{ fontSize:10, color:'rgba(189,100,57,0.65)' }}>+{fmtK(oppAmt)}</span>}
+                    {vs!==null && <span style={{ fontSize:11, color:vs>=0?'#736F4C':'#BD6439' }}>{vs>=0?'+':''}{fmtK(vs)}</span>}
+                    {oppAmt>0 && <span style={{ fontSize:11, color:'rgba(189,100,57,0.65)' }}>+{fmtK(oppAmt)}</span>}
                   </div>
                 </div>
               )
@@ -275,7 +275,7 @@ export default function DashboardTab({ appState, onNavigate }) {
 
           <div style={{ display:'flex', gap:16, marginTop:10, paddingTop:8, borderTop:'1px solid rgba(61,57,53,0.08)', flexShrink:0 }}>
             {[['#736F4C','At/above goal'],['#BD6439','Below goal'],['rgba(115,111,76,0.4)','Projected'],['rgba(189,100,57,0.22)','Pipeline']].map(([c,l])=>(
-              <span key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'#736F4C' }}>
+              <span key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#736F4C' }}>
                 <span style={{ width:10, height:10, borderRadius:2, background:c, display:'inline-block', flexShrink:0 }} />{l}
               </span>
             ))}
@@ -284,7 +284,7 @@ export default function DashboardTab({ appState, onNavigate }) {
 
         {/* A/R */}
         <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', cursor:'pointer', display:'flex', flexDirection:'column' }} onClick={()=>onNavigate('ar')}>
-          <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10, flexShrink:0 }}>
+          <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10, flexShrink:0 }}>
             A/R Collections <span style={{ color:'#BD6439' }}>↗</span>
           </div>
 
@@ -298,7 +298,7 @@ export default function DashboardTab({ appState, onNavigate }) {
               const amt = arB[b]||0, pct = arTot>0?Math.round(amt/arTot*100):0
               return (
                 <div key={b}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#736F4C', marginBottom:3 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#736F4C', marginBottom:3 }}>
                     <span>{AR_LABELS[b]}</span>
                     <span><span style={{ fontWeight:600, color:'#3D3935' }}>{fmt(amt)}</span> <span style={{ color:'#736F4C' }}>{pct}%</span></span>
                   </div>
@@ -313,11 +313,11 @@ export default function DashboardTab({ appState, onNavigate }) {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:14, paddingTop:12, borderTop:'1px solid rgba(61,57,53,0.1)', flexShrink:0 }}>
             <div>
               <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#BD6439', lineHeight:1 }}>{fmtK(arPD)}</div>
-              <div style={{ fontSize:10, color:'#736F4C', marginTop:3 }}>Past due</div>
+              <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>Past due</div>
             </div>
             <div>
               <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#736F4C', lineHeight:1 }}>{fmtK(arB['0-30']||0)}</div>
-              <div style={{ fontSize:10, color:'#736F4C', marginTop:3 }}>Current (0–30)</div>
+              <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>Current (0–30)</div>
             </div>
           </div>
         </div>
@@ -332,9 +332,9 @@ const Sep = () => <div style={{ width:1, height:36, background:'rgba(245,245,241
 function HeroKPI({ label, value, sub, accent }) {
   return (
     <div style={{ textAlign:'right' }}>
-      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(245,245,241,0.45)', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(245,245,241,0.45)', marginBottom:3 }}>{label}</div>
       <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', color:accent?'#BD6439':'#F5F5F1', lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:10, color:'rgba(245,245,241,0.38)', marginTop:3 }}>{sub}</div>
+      <div style={{ fontSize:11, color:'rgba(245,245,241,0.38)', marginTop:3 }}>{sub}</div>
     </div>
   )
 }
@@ -347,9 +347,9 @@ function SignalCard({ label, value, sub, warn, accent, onClick }) {
       borderTop: '2px solid #BD6439',
       padding:'10px 14px', cursor:onClick?'pointer':'default',
     }}>
-      <div style={{ fontSize:10, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:8 }}>{label}</div>
       <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', lineHeight:1, color:warn?'#BD6439':accent?'#BD6439':'#3D3935' }}>{value}</div>
-      <div style={{ fontSize:10, color:'#736F4C', marginTop:6 }}>{sub}</div>
+      <div style={{ fontSize:11, color:'#736F4C', marginTop:6 }}>{sub}</div>
     </div>
   )
 }
@@ -357,9 +357,9 @@ function SignalCard({ label, value, sub, warn, accent, onClick }) {
 function StatBox({ label, value, sub, muted }) {
   return (
     <div>
-      <div style={{ fontSize:10, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{label}</div>
+      <div style={{ fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{label}</div>
       <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:muted?'#736F4C':'#3D3935' }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#736F4C', marginTop:2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:2 }}>{sub}</div>}
     </div>
   )
 }

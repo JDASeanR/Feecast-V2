@@ -59,7 +59,7 @@ export default {
       },
       fontSize: {
         // Brand modular scale (~1.25x per step)
-        '2xs':  ['10px', { lineHeight: '14px', letterSpacing: '0.18em' }],
+        '2xs':  ['11px', { lineHeight: '15px', letterSpacing: '0.14em' }],
         'xs':   ['12px', { lineHeight: '16px' }],
         'sm':   ['14px', { lineHeight: '20px' }],
         'base': ['16px', { lineHeight: '24px' }],
