@@ -629,14 +629,14 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
   return (
     <tr className={clsx('border-b border-sand-2', billedOut || ph.done ? 'opacity-40' : onHold ? 'opacity-60' : '')}>
       {/* Name / alloc status */}
-      <td className="sticky left-0 z-10 bg-white px-2 py-1 border-b border-sand-2"
-        style={{ minWidth: COL_NAME, paddingLeft: indent }}>
+      <td className="sticky left-0 bg-white px-2 py-1 border-b border-sand-2"
+        style={{ minWidth: COL_NAME, paddingLeft: indent, zIndex: holdOpen ? 100 : 10 }}>
         <div className="truncate text-xs text-olive">{ph.name}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-2xs text-dark-3">{ph.scope}</span>
           {onHold ? (
             <span className="text-2xs flex items-center gap-1" style={{ color: '#6b7280' }}>
-              <i className={clsx('ti', HOLD_ICONS[ph.holdStatus])} style={{ fontSize: 10 }} />
+              <i className={clsx('ti', HOLD_ICONS[ph.holdStatus])} style={{ fontSize: 11 }} />
               {HOLD_LABELS[ph.holdStatus]}
             </span>
           ) : (
@@ -649,30 +649,32 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
               {!onHold && <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />}
               <div ref={holdRef} style={{ position: 'relative' }}>
                 <button
-                  title="Hold status"
+                  title="Phase hold status"
                   onClick={() => setHoldOpen(v => !v)}
                   className="flex items-center justify-center rounded transition-colors"
                   style={{
-                    width: 20, height: 20, fontSize: 12,
-                    background: onHold ? 'rgba(107,114,128,0.15)' : 'rgba(61,57,53,0.06)',
-                    color: onHold ? '#6b7280' : '#736F4C',
-                    border: '1px solid rgba(61,57,53,0.12)', cursor: 'pointer',
+                    width: 22, height: 18, fontSize: 13,
+                    background: onHold ? 'rgba(107,114,128,0.18)' : 'rgba(189,100,57,0.08)',
+                    color: onHold ? '#6b7280' : '#BD6439',
+                    border: '1px solid ' + (onHold ? 'rgba(107,114,128,0.25)' : 'rgba(189,100,57,0.25)'),
+                    cursor: 'pointer', borderRadius: 3,
                   }}
                 >
-                  <i className={clsx('ti', onHold ? HOLD_ICONS[ph.holdStatus] : 'ti-dots')} />
+                  <i className={clsx('ti', onHold ? HOLD_ICONS[ph.holdStatus] : 'ti-activity')} />
                 </button>
                 {holdOpen && (
                   <div style={{
                     position: 'absolute', bottom: '100%', left: 0, zIndex: 9999,
-                    background: '#F5F5F1', border: '1px solid rgba(61,57,53,0.2)',
-                    borderRadius: 5, padding: '4px 0', minWidth: 190,
-                    boxShadow: '0 6px 24px rgba(61,57,53,0.25)',
+                    background: '#fff', border: '1px solid rgba(61,57,53,0.2)',
+                    borderRadius: 6, padding: '4px 0', minWidth: 200,
+                    boxShadow: '0 8px 30px rgba(61,57,53,0.3)',
                     marginBottom: 4,
                   }}>
+                    <div style={{ fontSize: 10, color: '#736F4C', padding: '4px 12px 6px', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid rgba(61,57,53,0.08)' }}>Phase Status</div>
                     {[
                       { val: null, label: 'Active (no hold)', icon: 'ti-circle-check', color: '#2d7a3a' },
                       { val: 'not-authorized', label: 'Not Authorized', icon: 'ti-lock', color: '#6b7280' },
-                      { val: 'awaiting-approval', label: 'Awaiting Approval', icon: 'ti-clock', color: '#6b7280' },
+                      { val: 'awaiting-approval', label: 'Awaiting Approval', icon: 'ti-clock', color: '#b45309' },
                     ].map(opt => (
                       <button
                         key={opt.val || 'active'}
@@ -681,14 +683,16 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
                           else if (opt.val) setHoldStatus(ph.id, opt.val)
                           setHoldOpen(false)
                         }}
-                        className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs transition-colors"
+                        className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors"
                         style={{
                           background: (ph.holdStatus || null) === opt.val ? 'rgba(61,57,53,0.08)' : 'transparent',
                           color: opt.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                          fontWeight: (ph.holdStatus || null) === opt.val ? 600 : 400,
                         }}
                       >
-                        <i className={clsx('ti', opt.icon)} style={{ fontSize: 12 }} />
+                        <i className={clsx('ti', opt.icon)} style={{ fontSize: 14 }} />
                         {opt.label}
+                        {(ph.holdStatus || null) === opt.val && <i className="ti ti-check" style={{ fontSize: 12, marginLeft: 'auto' }} />}
                       </button>
                     ))}
                   </div>
