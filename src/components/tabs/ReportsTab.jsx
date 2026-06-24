@@ -456,14 +456,15 @@ export default function ReportsTab({ appState }) {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
     const canvas = await renderToCanvas(scale)
     const { jsPDF } = window.jspdf
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()
     const pageH = pdf.internal.pageSize.getHeight()
-    const imgH = (canvas.height / canvas.width) * pageW
+    const ratio = pageW / canvas.width
+    const imgH  = canvas.height * ratio
     const totalPages = Math.ceil(imgH / pageH)
     for (let i = 0; i < totalPages; i++) {
       if (i > 0) pdf.addPage()
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -i * pageH, pageW, imgH)
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -(i * pageH), pageW, imgH)
     }
     return pdf
   }
