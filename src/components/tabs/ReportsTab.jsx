@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { pdf } from '@react-pdf/renderer'
+import { pdf as renderPDF } from '@react-pdf/renderer'
 import FinancialReportPDF from './FinancialReportPDF.jsx'
 import { fmt, clsx } from '../../lib/utils'
 
@@ -510,7 +510,7 @@ export default function ReportsTab({ appState }) {
           logo={appState.settings?.firm?.logo}
         />
       )
-      const blob = await pdf(doc).toBlob()
+      const blob = await renderPDF(doc).toBlob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
