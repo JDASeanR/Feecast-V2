@@ -450,16 +450,16 @@ export default function ReportsTab({ appState }) {
     return names[rType] || 'Report'
   }
 
-  const renderToCanvas = async () => {
+  const renderToCanvas = async (scale = 2) => {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
     const node = previewRef.current?.querySelector('.report-page') || previewRef.current
     if (!node) throw new Error('No report content')
-    return window.html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false })
+    return window.html2canvas(node, { scale, useCORS: true, backgroundColor: '#ffffff', logging: false })
   }
 
-  const buildPDF = async () => {
+  const buildPDF = async (scale = 2) => {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-    const canvas = await renderToCanvas()
+    const canvas = await renderToCanvas(scale)
     const { jsPDF } = window.jspdf
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pageW = pdf.internal.pageSize.getWidth()
@@ -489,7 +489,7 @@ export default function ReportsTab({ appState }) {
     if (!emailTo || !preview) return
     setEmailSending(true); setEmailStatus(null)
     try {
-      const pdf = await buildPDF()
+      const pdf = await buildPDF(1)
       const pdfBase64 = pdf.output('datauristring').split(',')[1]
       const filename = getReportName() + '-' + new Date().toISOString().slice(0, 10) + '.pdf'
       const res = await fetch('/api/send-report', {
