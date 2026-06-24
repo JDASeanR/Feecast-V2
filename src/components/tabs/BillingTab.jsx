@@ -154,6 +154,19 @@ export default function BillingTab({ appState, mutate }) {
     }))
   }, [mutate])
 
+  const setHoldStatus = useCallback((phId, val) => {
+    mutate(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => ({
+        ...p,
+        phases: p.phases.map(ph => {
+          if (ph.id !== phId) return ph
+          return { ...ph, holdStatus: ph.holdStatus === val ? null : val }
+        })
+      }))
+    }))
+  }, [mutate])
+
   const togglePM = key =>
     setExpandedPM(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
   const toggleClient = key =>
@@ -432,6 +445,7 @@ export default function BillingTab({ appState, mutate }) {
                         monthlyGoal={monthlyGoal}
                         setPct={setPct}
                         setBillingConf={setBillingConf}
+                        setHoldStatus={setHoldStatus}
                       />
                     ))
                   ]
@@ -480,7 +494,7 @@ function SummaryCell({ label, bold, sticky }) {
 }
 
 // ── ProjectRows ───────────────────────────────────────────────────────────────
-function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf }) {
+function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf, setHoldStatus }) {
   const pFee = p.phases.reduce((s, ph) => s + phFeeFC(ph), 0)
   const pTots = visMonths.map(m =>
     p.phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
@@ -529,6 +543,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             visMonths={visMonths}
             setPct={setPct}
             setBillingConf={setBillingConf}
+            setHoldStatus={setHoldStatus}
           />
         ))
       })()}
@@ -537,7 +552,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
 }
 
 // ── AddendumGroup ─────────────────────────────────────────────────────────────
-function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf }) {
+function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf, setHoldStatus }) {
   return (
     <>
       {/* Addendum header (skip for main group) */}
@@ -578,6 +593,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
           indent={addKey !== '__main__' ? 64 : 50}
           setPct={setPct}
           setBillingConf={setBillingConf}
+          setHoldStatus={setHoldStatus}
         />
       ))}
     </>
@@ -585,30 +601,99 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
 }
 
 // ── PhaseRow ──────────────────────────────────────────────────────────────────
-function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf }) {
+const HOLD_LABELS = { 'not-authorized': 'Not Authorized', 'awaiting-approval': 'Awaiting Approval' }
+const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-clock' }
+
+function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf, setHoldStatus }) {
+  const [holdOpen, setHoldOpen] = useState(false)
+  const holdRef = useRef(null)
   const rem      = phRem(ph)
   const billedOut = rem <= 0
+  const onHold   = !!ph.holdStatus
   const alloc    = phAlloc(ph)
   const fee      = phFeeFC(ph)
   const allocPct = billedOut ? 100 : fee > 0 ? Math.round(alloc / fee * 100) : 0
   const allocColor = billedOut ? '#2d7a3a'
+    : onHold ? '#6b7280'
     : Math.abs(alloc - fee) < 1 ? '#2d7a3a'
     : alloc > fee ? '#c0392b'
     : '#888'
 
+  useEffect(() => {
+    if (!holdOpen) return
+    const h = e => { if (holdRef.current && !holdRef.current.contains(e.target)) setHoldOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [holdOpen])
+
   return (
-    <tr className={clsx('border-b border-sand-2', billedOut || ph.done ? 'opacity-40' : '')}>
+    <tr className={clsx('border-b border-sand-2', billedOut || ph.done ? 'opacity-40' : onHold ? 'opacity-60' : '')}>
       {/* Name / alloc status */}
       <td className="sticky left-0 z-10 bg-white px-2 py-1 border-b border-sand-2"
         style={{ minWidth: COL_NAME, paddingLeft: indent }}>
         <div className="truncate text-xs text-olive">{ph.name}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-2xs text-dark-3">{ph.scope}</span>
-          <span className="text-2xs" style={{ color: allocColor }}>
-            {billedOut ? '✓ Billed out' : `${allocPct}% alloc`}
-          </span>
+          {onHold ? (
+            <span className="text-2xs flex items-center gap-1" style={{ color: '#6b7280' }}>
+              <i className={clsx('ti', HOLD_ICONS[ph.holdStatus])} style={{ fontSize: 10 }} />
+              {HOLD_LABELS[ph.holdStatus]}
+            </span>
+          ) : (
+            <span className="text-2xs" style={{ color: allocColor }}>
+              {billedOut ? '✓ Billed out' : `${allocPct}% alloc`}
+            </span>
+          )}
           {!billedOut && (
-            <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />
+            <>
+              {!onHold && <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />}
+              <div ref={holdRef} style={{ position: 'relative' }}>
+                <button
+                  title="Hold status"
+                  onClick={() => setHoldOpen(v => !v)}
+                  className="flex items-center justify-center rounded transition-colors"
+                  style={{
+                    width: 16, height: 16, fontSize: 10,
+                    background: onHold ? 'rgba(107,114,128,0.15)' : 'transparent',
+                    color: onHold ? '#6b7280' : '#b0aca0',
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <i className={clsx('ti', onHold ? HOLD_ICONS[ph.holdStatus] : 'ti-dots')} />
+                </button>
+                {holdOpen && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 50,
+                    background: '#F5F5F1', border: '1px solid rgba(61,57,53,0.15)',
+                    borderRadius: 5, padding: '4px 0', minWidth: 180,
+                    boxShadow: '0 4px 16px rgba(61,57,53,0.15)',
+                  }}>
+                    {[
+                      { val: null, label: 'Active (no hold)', icon: 'ti-circle-check', color: '#2d7a3a' },
+                      { val: 'not-authorized', label: 'Not Authorized', icon: 'ti-lock', color: '#6b7280' },
+                      { val: 'awaiting-approval', label: 'Awaiting Approval', icon: 'ti-clock', color: '#6b7280' },
+                    ].map(opt => (
+                      <button
+                        key={opt.val || 'active'}
+                        onClick={() => {
+                          if (opt.val === null && ph.holdStatus) setHoldStatus(ph.id, ph.holdStatus)
+                          else if (opt.val) setHoldStatus(ph.id, opt.val)
+                          setHoldOpen(false)
+                        }}
+                        className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs transition-colors"
+                        style={{
+                          background: (ph.holdStatus || null) === opt.val ? 'rgba(61,57,53,0.08)' : 'transparent',
+                          color: opt.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        <i className={clsx('ti', opt.icon)} style={{ fontSize: 12 }} />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </td>
