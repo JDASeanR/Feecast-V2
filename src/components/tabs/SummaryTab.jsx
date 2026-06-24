@@ -232,7 +232,7 @@ export default function SummaryTab({ appState }) {
     if(p.flag||p.phases.some(ph=>ph.flag))byPM[p.pm].flags++
   })
 
-  const n3Mks  = Array.from({length:3},(_,i)=>{const d=new Date(CY,CM-1+i,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})
+  const n3Mks  = Array.from({length:3},(_,i)=>{const d=new Date(CY,CM+i,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})
   const tBacklog = active.reduce((s,p)=>s+pRem(p),0)
 
   const pmData = pmList.map(pm=>{
