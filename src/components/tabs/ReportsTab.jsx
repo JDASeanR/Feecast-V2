@@ -445,26 +445,48 @@ export default function ReportsTab({ appState }) {
     return names[rType] || 'Report'
   }
 
-  const renderToCanvas = async (scale = 2) => {
+  const buildPDF = async () => {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    const { jsPDF } = window.jspdf
     const node = previewRef.current?.querySelector('.report-page') || previewRef.current
     if (!node) throw new Error('No report content')
-    return window.html2canvas(node, { scale, useCORS: true, backgroundColor: '#ffffff', logging: false })
-  }
 
-  const buildPDF = async (scale = 2) => {
-    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-    const canvas = await renderToCanvas(scale)
-    const { jsPDF } = window.jspdf
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' })
-    const pageW = pdf.internal.pageSize.getWidth()
-    const pageH = pdf.internal.pageSize.getHeight()
-    const ratio = pageW / canvas.width
-    const imgH  = canvas.height * ratio
-    const totalPages = Math.ceil(imgH / pageH)
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight()  // 297mm
+    const margin = 10 // mm
+
+    // Capture full canvas at scale 2
+    const canvas = await window.html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: node.scrollWidth,
+      height: node.scrollHeight,
+      windowWidth: node.scrollWidth,
+    })
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92)
+    const printW  = pageW - margin * 2
+    const printH  = pageH - margin * 2
+    // How many canvas px fit in one printed page height
+    const pxPerPage = (canvas.width / printW) * printH
+    const totalPages = Math.ceil(canvas.height / pxPerPage)
+
     for (let i = 0; i < totalPages; i++) {
       if (i > 0) pdf.addPage()
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -(i * pageH), pageW, imgH)
+      // srcY: which row of canvas pixels starts this page
+      const srcY    = i * pxPerPage
+      const srcH    = Math.min(pxPerPage, canvas.height - srcY)
+      // Create a slice canvas for this page
+      const slice   = document.createElement('canvas')
+      slice.width   = canvas.width
+      slice.height  = srcH
+      slice.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+      const sliceH  = (srcH / canvas.width) * printW
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, printW, sliceH)
     }
     return pdf
   }
