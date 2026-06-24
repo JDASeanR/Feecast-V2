@@ -653,20 +653,21 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
                   onClick={() => setHoldOpen(v => !v)}
                   className="flex items-center justify-center rounded transition-colors"
                   style={{
-                    width: 16, height: 16, fontSize: 10,
-                    background: onHold ? 'rgba(107,114,128,0.15)' : 'transparent',
-                    color: onHold ? '#6b7280' : '#b0aca0',
-                    border: 'none', cursor: 'pointer',
+                    width: 20, height: 20, fontSize: 12,
+                    background: onHold ? 'rgba(107,114,128,0.15)' : 'rgba(61,57,53,0.06)',
+                    color: onHold ? '#6b7280' : '#736F4C',
+                    border: '1px solid rgba(61,57,53,0.12)', cursor: 'pointer',
                   }}
                 >
                   <i className={clsx('ti', onHold ? HOLD_ICONS[ph.holdStatus] : 'ti-dots')} />
                 </button>
                 {holdOpen && (
                   <div style={{
-                    position: 'absolute', top: '100%', left: 0, zIndex: 50,
-                    background: '#F5F5F1', border: '1px solid rgba(61,57,53,0.15)',
-                    borderRadius: 5, padding: '4px 0', minWidth: 180,
-                    boxShadow: '0 4px 16px rgba(61,57,53,0.15)',
+                    position: 'absolute', bottom: '100%', left: 0, zIndex: 9999,
+                    background: '#F5F5F1', border: '1px solid rgba(61,57,53,0.2)',
+                    borderRadius: 5, padding: '4px 0', minWidth: 190,
+                    boxShadow: '0 6px 24px rgba(61,57,53,0.25)',
+                    marginBottom: 4,
                   }}>
                     {[
                       { val: null, label: 'Active (no hold)', icon: 'ti-circle-check', color: '#2d7a3a' },
