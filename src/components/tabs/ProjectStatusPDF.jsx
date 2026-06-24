@@ -41,8 +41,6 @@ const S = StyleSheet.create({
   cellSmall: { fontSize: 7, color: '#736F4C' },
   cellSmallRight: { fontSize: 7, color: '#736F4C', textAlign: 'right' },
   cellDone: { fontSize: 7, color: '#3a7a4a' },
-  wipBarOuter: { height: 3, backgroundColor: '#ECEAE3', borderRadius: 1.5, width: 40 },
-  wipBarInner: { height: 3, backgroundColor: '#BD6439', borderRadius: 1.5 },
   footer: { position: 'absolute', bottom: 20, left: 36, right: 36, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: '#dedad0', paddingTop: 6 },
   footerText: { fontSize: 7, color: '#a09c85' },
 })
@@ -168,19 +166,7 @@ export default function ProjectStatusPDF({ appState, pm, client, fromMk, toMk, l
                   <View key={p.id || p.project}>
                     {/* Project header — full-width banner */}
                     <View style={S.projectBanner}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={[S.cellBold, { marginRight: 8 }]}>{p.project}</Text>
-                        <Text style={[S.cellSmall, { marginRight: 8 }]}>{p.client}</Text>
-                        <Text style={[S.cellSmall, { color: '#a09c85', marginRight: 8 }]}>{p.pm}</Text>
-                        {p.projNo ? <Text style={[S.cellSmall, { color: '#a09c85', marginRight: 8 }]}>#{p.projNo}</Text> : null}
-                        {p.done ? <Text style={S.cellDone}>Done</Text> : null}
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                        <View style={[S.wipBarOuter, { width: 120 }]}>
-                          <View style={[S.wipBarInner, { width: Math.min(100, wip) + '%', backgroundColor: wip >= 100 ? '#3a7a4a' : '#BD6439' }]} />
-                        </View>
-                        <Text style={{ fontSize: 7, color: '#736F4C', marginLeft: 6 }}>{wip}% complete · {fmt(fee)} fee</Text>
-                      </View>
+                      <Text style={S.cellBold}>{p.project}   <Text style={S.cellSmall}>{p.client}   {p.pm}   {p.projNo ? '#' + p.projNo : ''}{p.done ? '   Done' : ''}</Text></Text>
                     </View>
 
                     {/* Phase rows */}
