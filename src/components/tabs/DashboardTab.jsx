@@ -76,12 +76,12 @@ function Popover({ trigger, title, children }) {
         <div style={{
           position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:100,
           background:'#F5F5F1', border:'1px solid rgba(61,57,53,0.15)',
-          borderRadius:6, padding:'20px 24px', minWidth:380,
-          boxShadow:'0 8px 32px rgba(61,57,53,0.14)',
+          borderRadius:8, padding:'32px 40px', minWidth:700,
+          boxShadow:'0 12px 48px rgba(61,57,53,0.18)',
         }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:15, letterSpacing:'0.06em', textTransform:'uppercase', color:'#3D3935' }}>{title}</div>
-            <button onClick={()=>setOpen(false)} style={{ background:'none', border:'none', color:'#736F4C', cursor:'pointer', fontSize:14 }}>✕</button>
+            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, letterSpacing:'0.06em', textTransform:'uppercase', color:'#3D3935' }}>{title}</div>
+            <button onClick={()=>setOpen(false)} style={{ background:'none', border:'none', color:'#736F4C', cursor:'pointer', fontSize:16 }}>✕</button>
           </div>
           {children}
         </div>
