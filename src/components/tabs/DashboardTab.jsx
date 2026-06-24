@@ -163,7 +163,7 @@ export default function DashboardTab({ appState, onNavigate }) {
 
   const [yoyYears,setYoyYears] = useState([CY,CY-1,CY-2])
   const availYears = Object.keys(HIST_ALL).map(Number).filter(y=>Object.values(HIST_ALL[y]).some(d=>d.g)).sort((a,b)=>b-a)
-  const YOY_COLORS = ['#BD6439','#736F4C','#3D3935']
+  const YOY_COLORS = ['#BD6439','#2563EB','#16A34A']
   const dateStr = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})
 
   return (
