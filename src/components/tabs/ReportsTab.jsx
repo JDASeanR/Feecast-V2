@@ -47,7 +47,7 @@ const AR_COLORS={'0-30':'#3a7a4a','30-60':'#736F4C','60-90':'#BD6439','90-120':'
 function invMonthLabel(inv){const ino=String(inv.invoiceNo||'');if(ino.length>=6){const yr=ino.slice(0,4),mo=+ino.slice(4,6);if(+yr>2000&&mo>=1&&mo<=12)return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mo-1]+' '+yr;}return inv.invoiceDate||'—';}
 
 // ── Report header HTML ────────────────────────────────────────────────────────
-function reportHeader(title, subtitle, template) {
+function reportHeader(title, subtitle, template, logo) {
   const dt = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
   if (template==='minimal') return `
     <div style="border-bottom:2px solid #BD6439;padding-bottom:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">
@@ -61,7 +61,7 @@ function reportHeader(title, subtitle, template) {
     <div style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:0.5px solid #dedad0">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${JDA_LOGO}" style="height:44px;width:44px;border-radius:5px">
+          ${logo ? `<img src="${logo}" style="height:44px;max-width:120px;object-fit:contain;border-radius:3px">` : `<img src="${JDA_LOGO}" style="height:44px;width:44px;border-radius:5px">`}
           <div>
             <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:13px;letter-spacing:.06em;color:#3D3935">JEFFREY DeMURE + ASSOCIATES</div>
             <div style="font-size:10px;color:#736F4C;letter-spacing:.1em;text-transform:uppercase">Architects · Planners</div>
@@ -119,7 +119,7 @@ function buildFinancialReport(appState, pm, client, fromMk, toMk, template) {
   const subtitle=`${pm==='ALL'?'All PMs':'PM: '+pm} · ${client==='ALL'?'All Clients':client} · ${MONTH_LIST.find(m=>m.key===fromMk)?.label||fromMk} – ${MONTH_LIST.find(m=>m.key===toMk)?.label||toMk}`
 
   return PAGE_WRAP(`
-    ${reportHeader('Firm Financial Summary',subtitle,template)}
+    ${reportHeader('Firm Financial Summary',subtitle,template,appState.settings?.firm?.logo)}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
       ${kpiCard('Total Contracted Fee',fmt(tF),'#3D3935')}
       ${kpiCard('Prior Billed',fmt(tB),'#736F4C')}
@@ -254,7 +254,7 @@ function buildProjectReport(appState, pm, client, fromMk, toMk, template) {
   const grandWip=grandFee>0?Math.round((grandBilled+grandYtd)/grandFee*100):0
 
   return PAGE_WRAP(`
-    ${reportHeader('Project Status Report',subtitle,template)}
+    ${reportHeader('Project Status Report',subtitle,template,appState.settings?.firm?.logo)}
     <table style="width:100%;border-collapse:collapse;font-size:11px">
       <thead><tr style="background:#3D3935;color:#F5F5F1">
         ${['Project / Phase','Scope','Fee','Prior Billed','YTD','Remaining','WIP'].map((h,i)=>`<th style="text-align:${i<2?'left':'right'};padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join('')}
@@ -305,7 +305,7 @@ function buildARReport(appState, pm, client, fromMk, toMk, template) {
   ]
 
   return PAGE_WRAP(`
-    ${reportHeader('A/R Aging Report',subtitle,template)}
+    ${reportHeader('A/R Aging Report',subtitle,template,appState.settings?.firm?.logo)}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
       ${kpis.map(k=>kpiCard(k.label,k.val,k.color)).join('')}
     </div>
@@ -368,7 +368,7 @@ function buildOpportunitiesReport(appState, pm, client, fromMk, toMk, template) 
     </tr>${oppRows}`}).join('')
 
   return PAGE_WRAP(`
-    ${reportHeader('Opportunities Report',subtitle,template)}
+    ${reportHeader('Opportunities Report',subtitle,template,appState.settings?.firm?.logo)}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
       ${kpiCard('Active Opportunities',opps.length,'#3D3935')}
       ${kpiCard('Total Est. Fee',fmt(totalFee),'#3D3935')}
