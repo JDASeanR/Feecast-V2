@@ -228,6 +228,34 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                     <input value={local.firm?.fullName||''} onChange={e=>set('firm',{...local.firm,fullName:e.target.value})}
                       className="input text-xs w-full" />
                   </div>
+                  <div>
+                    <label className="field-label">Logo</label>
+                    <div className="flex items-center gap-3">
+                      {local.firm?.logo && (
+                        <img src={local.firm.logo} alt="Firm logo" style={{height:40,maxWidth:120,objectFit:'contain',border:'1px solid rgba(61,57,53,0.12)',borderRadius:4,padding:4,background:'#fff'}} />
+                      )}
+                      <div className="flex flex-col gap-1">
+                        <label style={{cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,fontSize:11,padding:'6px 12px',border:'1px solid rgba(61,57,53,0.2)',borderRadius:4,background:'#ECEAE3',color:'#3D3935'}}>
+                          <i className="ti ti-upload" style={{fontSize:13}} />
+                          {local.firm?.logo ? 'Replace logo' : 'Upload logo'}
+                          <input type="file" accept="image/*" style={{display:'none'}} onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = ev => set('firm', {...local.firm, logo: ev.target.result})
+                            reader.readAsDataURL(file)
+                          }} />
+                        </label>
+                        {local.firm?.logo && (
+                          <button onClick={() => set('firm', {...local.firm, logo: null})}
+                            style={{fontSize:11,color:'#BD6439',background:'none',border:'none',cursor:'pointer',textAlign:'left',padding:'2px 0'}}>
+                            Remove logo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-2xs text-dark-3 mt-1">PNG or SVG recommended. Used in reports and email digest.</div>
+                  </div>
                   <div className="pt-3 border-t border-sand-2">
                     <div className="text-xs font-semibold mb-2">Smartsheet Connection</div>
                     <div className="space-y-2">
