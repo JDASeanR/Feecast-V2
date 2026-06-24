@@ -149,7 +149,7 @@ export default function FinancialReportPDF({ appState, pm, client, fromMk, toMk,
 
   const subtitle = `${pm==='ALL'?'All PMs':'PM: '+pm} · ${client==='ALL'?'All Clients':client} · ${fromMk} – ${toMk}`
   const dt = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
-  const firmName = settings.firm?.fullName || 'JEFFREY DeMURE + ASSOCIATES'
+  const firmName = settings.firm?.fullName || settings.firm?.name || 'JEFFREY DeMURE + ASSOCIATES'
   const useLogo  = logo || settings.firm?.logo
 
   const pmCols = [
