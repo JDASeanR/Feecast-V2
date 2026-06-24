@@ -149,7 +149,7 @@ export default function ProjectStatusPDF({ appState, pm, client, fromMk, toMk, l
           grandFee += gFee; grandBilled += gBil; grandYtd += gYtd; grandRem += gRem
 
           return (
-            <View key={k} wrap={false}>
+            <View key={k}>
               {/* Group header */}
               <View style={S.groupHeader}>
                 <Text style={S.groupHeaderText}>
