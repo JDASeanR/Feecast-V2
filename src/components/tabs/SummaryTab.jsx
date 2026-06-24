@@ -247,7 +247,7 @@ export default function SummaryTab({ appState }) {
     const n3Goal        = pmMonthlyGoal?pmMonthlyGoal*3:monthlyGoal*3*backlogShare
     const monthlyGoalUsed = pmMonthlyGoal||Math.round(monthlyGoal*backlogShare)
     const coverage      = n3Goal>0?Math.round(n3Alloc/n3Goal*100):0
-    const coverageColor = coverage>=80?'#2d7a3a':coverage>=60?'#BD6439':'#c0392b'
+    const coverageColor = coverage>100?'#736F4C':coverage>=80?'#BD6439':'#3D3935'
     const coverageIcon  = coverage>=80?'✓':coverage>=60?'⚡':'⚠️'
     const pmPipeline    = activeOpps.filter(o=>o.pm===pm).reduce((s,o)=>s+Math.round((o.fee||0)*(o.confidence||50)/100),0)
     const totalCap      = backlog+pmPipeline
@@ -372,9 +372,9 @@ export default function SummaryTab({ appState }) {
           <>
             <div style={{ marginBottom:12, fontSize:12, color:'#736F4C' }}>
               Coverage = next 3 months allocated vs. proportional billing goal &nbsp;·&nbsp;
-              <span style={{ color:'#2d7a3a' }}>✓ ≥80%</span> &nbsp;
+              <span style={{ color:'#BD6439' }}>✓ ≥80%</span> &nbsp;
               <span style={{ color:'#BD6439' }}>⚡ 60–80%</span> &nbsp;
-              <span style={{ color:'#c0392b' }}>⚠️ &lt;60%</span>
+              <span style={{ color:'#3D3935' }}>⚠️ &lt;60%</span>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
@@ -426,8 +426,8 @@ export default function SummaryTab({ appState }) {
                       <td className="px-3 py-2 text-center">
                         <span style={{
                           fontSize:11, padding:'2px 8px', borderRadius:3, fontWeight:600,
-                          background:d.monthsOfWork>=6?'rgba(45,122,58,0.1)':d.monthsOfWork>=3?'rgba(189,100,57,0.1)':'rgba(192,57,43,0.1)',
-                          color:d.monthsOfWork>=6?'#2d7a3a':d.monthsOfWork>=3?'#BD6439':'#c0392b'
+                          background:d.monthsOfWork>=6?'rgba(115,111,76,0.12)':d.monthsOfWork>=3?'rgba(189,100,57,0.1)':'rgba(61,57,53,0.08)',
+                          color:d.monthsOfWork>=6?'#736F4C':d.monthsOfWork>=3?'#BD6439':'#3D3935'
                         }}>
                           {d.monthsOfWork} mo
                         </span>
