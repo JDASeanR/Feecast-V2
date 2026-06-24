@@ -430,6 +430,81 @@ export default function ReportsTab({ appState }) {
   // Auto-generate on mount and filter changes
   useEffect(() => { generate() }, [generate])
 
+  const [exporting, setExporting] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailMsg, setEmailMsg] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailStatus, setEmailStatus] = useState(null)
+  const previewRef = useRef(null)
+
+  const loadScript = src => new Promise((res, rej) => {
+    if (document.querySelector('script[src="' + src + '"]')) return res()
+    const s = document.createElement('script')
+    s.src = src; s.onload = res; s.onerror = rej
+    document.head.appendChild(s)
+  })
+
+  const getReportName = () => {
+    const names = { financial:'Firm-Financial-Summary', project:'Project-Status-Report', ar:'AR-Aging-Report', pipeline:'Opportunities-Report' }
+    return names[rType] || 'Report'
+  }
+
+  const renderToCanvas = async () => {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+    const node = previewRef.current?.querySelector('.report-page') || previewRef.current
+    if (!node) throw new Error('No report content')
+    return window.html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false })
+  }
+
+  const buildPDF = async () => {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    const canvas = await renderToCanvas()
+    const { jsPDF } = window.jspdf
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgH = (canvas.height / canvas.width) * pageW
+    const totalPages = Math.ceil(imgH / pageH)
+    for (let i = 0; i < totalPages; i++) {
+      if (i > 0) pdf.addPage()
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, -i * pageH, pageW, imgH)
+    }
+    return pdf
+  }
+
+  const handleExportPDF = async () => {
+    if (!preview) return
+    setExporting(true)
+    try {
+      const pdf = await buildPDF()
+      pdf.save(getReportName() + '-' + new Date().toISOString().slice(0, 10) + '.pdf')
+    } catch (err) {
+      console.error(err)
+      alert('PDF export failed. Try again.')
+    } finally { setExporting(false) }
+  }
+
+  const handleSendEmail = async () => {
+    if (!emailTo || !preview) return
+    setEmailSending(true); setEmailStatus(null)
+    try {
+      const pdf = await buildPDF()
+      const pdfBase64 = pdf.output('datauristring').split(',')[1]
+      const filename = getReportName() + '-' + new Date().toISOString().slice(0, 10) + '.pdf'
+      const res = await fetch('/api/send-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo, message: emailMsg, pdfBase64, filename, reportName: getReportName() })
+      })
+      if (res.ok) {
+        setEmailStatus('sent')
+        setTimeout(() => { setEmailOpen(false); setEmailStatus(null); setEmailTo(''); setEmailMsg('') }, 2000)
+      } else { setEmailStatus('error') }
+    } catch (err) { console.error(err); setEmailStatus('error') }
+    finally { setEmailSending(false) }
+  }
+
   const handlePrint = () => {
     const win = window.open('','_blank')
     win.document.write(`<!DOCTYPE html><html><head>
@@ -531,14 +606,17 @@ export default function ReportsTab({ appState }) {
           <button onClick={generate} className="btn btn-primary text-xs w-full justify-center font-display tracking-wide">
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={handlePrint} className="btn text-xs w-full justify-center">
-            <i className="ti ti-printer" /> Export PDF
+          <button onClick={handleExportPDF} disabled={exporting} className="btn text-xs w-full justify-center" style={{opacity:exporting?0.6:1}}>
+            <i className={"ti " + (exporting ? "ti-loader" : "ti-download")} /> {exporting ? "Generating..." : "Export PDF"}
+          </button>
+          <button onClick={()=>setEmailOpen(true)} className="btn text-xs w-full justify-center">
+            <i className="ti ti-mail" /> Email Report
           </button>
         </div>
       </div>
 
       {/* Preview pane */}
-      <div className="flex-1 overflow-auto bg-[#e8e5dc] p-6 flex flex-col items-center">
+      <div ref={previewRef} className="flex-1 overflow-auto bg-[#e8e5dc] p-6 flex flex-col items-center">
         <div className="w-full max-w-3xl">
           {preview
             ? <div dangerouslySetInnerHTML={{ __html: preview }} />
@@ -549,6 +627,38 @@ export default function ReportsTab({ appState }) {
           }
         </div>
       </div>
+
+      {emailOpen && (
+        <div style={{position:'fixed',inset:0,background:'rgba(61,57,53,0.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#F5F5F1',borderRadius:6,padding:'24px 28px',width:420,boxShadow:'0 8px 32px rgba(61,57,53,0.18)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+              <div style={{fontFamily:'"League Gothic",sans-serif',fontSize:18,letterSpacing:'0.06em',textTransform:'uppercase',color:'#3D3935'}}>Email Report</div>
+              <button onClick={()=>{setEmailOpen(false);setEmailStatus(null)}} style={{background:'none',border:'none',color:'#736F4C',cursor:'pointer',fontSize:16}}>✕</button>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div>
+                <div style={{fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:'#736F4C',marginBottom:5}}>To</div>
+                <input value={emailTo} onChange={e=>setEmailTo(e.target.value)} placeholder="recipient@example.com"
+                  style={{width:'100%',padding:'8px 10px',border:'1px solid rgba(61,57,53,0.2)',borderRadius:4,fontSize:13,fontFamily:'inherit',background:'#fff',color:'#3D3935'}} />
+              </div>
+              <div>
+                <div style={{fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:'#736F4C',marginBottom:5}}>Message (optional)</div>
+                <textarea value={emailMsg} onChange={e=>setEmailMsg(e.target.value)} placeholder="Add a note..." rows={3}
+                  style={{width:'100%',padding:'8px 10px',border:'1px solid rgba(61,57,53,0.2)',borderRadius:4,fontSize:13,fontFamily:'inherit',background:'#fff',color:'#3D3935',resize:'vertical'}} />
+              </div>
+              <div style={{fontSize:11,color:'#736F4C',background:'#ECEAE3',borderRadius:4,padding:'8px 10px'}}>
+                Sending <strong>{getReportName()}</strong> as PDF from digest@feecast.app
+              </div>
+              {emailStatus==='error' && <div style={{fontSize:11,color:'#BD6439'}}>Send failed — check the address and try again.</div>}
+              {emailStatus==='sent' && <div style={{fontSize:11,color:'#736F4C'}}>Sent successfully.</div>}
+              <button onClick={handleSendEmail} disabled={!emailTo||emailSending}
+                style={{padding:10,background:'#3D3935',color:'#F5F5F1',border:'none',borderRadius:4,fontSize:12,fontFamily:'"League Gothic",sans-serif',letterSpacing:'0.1em',textTransform:'uppercase',cursor:(!emailTo||emailSending)?'not-allowed':'pointer',opacity:(!emailTo||emailSending)?0.6:1}}>
+                {emailSending ? 'Sending...' : 'Send Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
