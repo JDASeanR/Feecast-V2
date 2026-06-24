@@ -306,12 +306,12 @@ export default function SummaryTab({ appState }) {
           <thead>
             <tr>
               <th>PM</th>
-              <th className="text-right">Projects</th>
-              <th className="text-right">Total Fees</th>
-              <th className="text-right">Billed</th>
-              <th className="text-right">Remaining</th>
-              <th className="text-right">WIP %</th>
-              <th className="text-right">Flags</th>
+              <th className="text-right" style={{ textAlign:"right" }}>Projects</th>
+              <th className="text-right" style={{ textAlign:"right" }}>Total Fees</th>
+              <th className="text-right" style={{ textAlign:"right" }}>Billed</th>
+              <th className="text-right" style={{ textAlign:"right" }}>Remaining</th>
+              <th className="text-right" style={{ textAlign:"right" }}>WIP %</th>
+              <th className="text-right" style={{ textAlign:"right" }}>Flags</th>
             </tr>
           </thead>
           <tbody>
