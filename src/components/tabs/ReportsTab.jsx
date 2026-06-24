@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { pdf } from '@react-pdf/renderer'
+import FinancialReportPDF from './FinancialReportPDF.jsx'
 import { fmt, clsx } from '../../lib/utils'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -491,6 +493,36 @@ export default function ReportsTab({ appState }) {
     return pdf
   }
 
+  const handleExportReactPDF = async () => {
+    if (rType !== 'financial') {
+      handleExportPDF()
+      return
+    }
+    setExporting(true)
+    try {
+      const doc = (
+        <FinancialReportPDF
+          appState={appState}
+          pm={rPM}
+          client={rClient}
+          fromMk={rFrom}
+          toMk={rTo}
+          logo={appState.settings?.firm?.logo}
+        />
+      )
+      const blob = await pdf(doc).toBlob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = 'Firm-Financial-Summary-' + new Date().toISOString().slice(0,10) + '.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('PDF error:', err)
+      alert('PDF generation failed: ' + err.message)
+    } finally { setExporting(false) }
+  }
+
   const handleExportPDF = async () => {
     if (!preview) return
     setExporting(true)
@@ -605,7 +637,7 @@ export default function ReportsTab({ appState }) {
           <button onClick={generate} className="btn btn-primary text-xs w-full justify-center font-display tracking-wide">
             <i className="ti ti-refresh" /> Refresh
           </button>
-          <button onClick={handleExportPDF} disabled={exporting} className="btn text-xs w-full justify-center" style={{opacity:exporting?0.6:1}}>
+          <button onClick={handleExportReactPDF} disabled={exporting} className="btn text-xs w-full justify-center" style={{opacity:exporting?0.6:1}}>
             <i className={"ti " + (exporting ? "ti-loader" : "ti-download")} /> {exporting ? "Generating..." : "Export PDF"}
           </button>
         </div>
