@@ -12,7 +12,7 @@ const S = StyleSheet.create({
     paddingHorizontal: 36,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: '#dedad0' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
   logo: { width: 36, height: 36, borderRadius: 4 },
   firmName: { fontSize: 11, fontFamily: 'Helvetica-Bold', letterSpacing: 1, color: '#3D3935' },
   firmSub: { fontSize: 8, color: '#736F4C', letterSpacing: 1, marginTop: 2 },
@@ -26,7 +26,7 @@ const S = StyleSheet.create({
   tableHeadCell: { fontSize: 7, color: '#F5F5F1', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
   groupHeader: { flexDirection: 'row', backgroundColor: '#3D3935', paddingVertical: 6, paddingHorizontal: 8 },
   groupHeaderText: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#F5F5F1', letterSpacing: 0.5 },
-  projectRow: { flexDirection: 'row', backgroundColor: '#F5F5F1', paddingVertical: 5, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: '#dedad0' },
+  projectBanner: { backgroundColor: '#F5F5F1', paddingVertical: 5, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: '#dedad0' },
   phaseRow: { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: 'rgba(61,57,53,0.06)' },
   projectTotalRow: { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#fafaf8', borderBottomWidth: 1, borderBottomColor: '#dedad0' },
   groupTotalRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: '#e9e5da', borderBottomWidth: 2, borderBottomColor: '#3D3935' },
@@ -113,7 +113,7 @@ export default function ProjectStatusPDF({ appState, pm, client, fromMk, toMk, l
         {/* Header */}
         <View style={S.headerRow} fixed>
           <View style={S.headerLeft}>
-            {useLogo ? <Image src={useLogo} style={S.logo} /> : null}
+            {useLogo ? <Image src={useLogo} style={[S.logo, { marginRight: 10 }]} /> : null}
             <View>
               <Text style={S.firmName}>{firmName.toUpperCase()}</Text>
               <Text style={S.firmSub}>ARCHITECTS · PLANNERS</Text>
@@ -166,28 +166,21 @@ export default function ProjectStatusPDF({ appState, pm, client, fromMk, toMk, l
 
                 return (
                   <View key={p.id || p.project}>
-                    {/* Project header row */}
-                    <View style={S.projectRow}>
-                      <View style={{ flex: 2 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={S.cellBold}>{p.project}</Text>
-                          <Text style={S.cellSmall}>{p.client}</Text>
-                          <Text style={[S.cellSmall, { color: '#a09c85' }]}>{p.pm}</Text>
-                          {p.projNo ? <Text style={[S.cellSmall, { color: '#a09c85' }]}>#{p.projNo}</Text> : null}
-                          {p.done ? <Text style={S.cellDone}>Done</Text> : null}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <View style={S.wipBarOuter}>
-                            <View style={[S.wipBarInner, { width: Math.min(100, wip) + '%', backgroundColor: wip >= 100 ? '#3a7a4a' : '#BD6439' }]} />
-                          </View>
-                        </View>
+                    {/* Project header — full-width banner */}
+                    <View style={S.projectBanner}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[S.cellBold, { marginRight: 8 }]}>{p.project}</Text>
+                        <Text style={[S.cellSmall, { marginRight: 8 }]}>{p.client}</Text>
+                        <Text style={[S.cellSmall, { color: '#a09c85', marginRight: 8 }]}>{p.pm}</Text>
+                        {p.projNo ? <Text style={[S.cellSmall, { color: '#a09c85', marginRight: 8 }]}>#{p.projNo}</Text> : null}
+                        {p.done ? <Text style={S.cellDone}>Done</Text> : null}
                       </View>
-                      <Text style={[S.cellRight, { flex: 0.5 }]}></Text>
-                      <Text style={[S.cellBoldRight, { flex: 1 }]}>{fmt(fee)}</Text>
-                      <Text style={[S.cellOliveRight, { flex: 1 }]}>{fmt(billed)}</Text>
-                      <Text style={[S.cellTerra, { flex: 1 }]}>{fmt(ytd)}</Text>
-                      <Text style={[S.cellBoldRight, { flex: 1 }]}>{fmt(rem)}</Text>
-                      <Text style={[S.cellBoldRight, { flex: 0.6 }]}>{wip}%</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                        <View style={[S.wipBarOuter, { width: 120 }]}>
+                          <View style={[S.wipBarInner, { width: Math.min(100, wip) + '%', backgroundColor: wip >= 100 ? '#3a7a4a' : '#BD6439' }]} />
+                        </View>
+                        <Text style={{ fontSize: 7, color: '#736F4C', marginLeft: 6 }}>{wip}% complete · {fmt(fee)} fee</Text>
+                      </View>
                     </View>
 
                     {/* Phase rows */}

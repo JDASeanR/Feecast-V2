@@ -12,7 +12,7 @@ const S = StyleSheet.create({
     paddingHorizontal: 36,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: '#dedad0' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
   logo: { width: 36, height: 36, borderRadius: 4 },
   firmName: { fontSize: 11, fontFamily: 'Helvetica-Bold', letterSpacing: 1, color: '#3D3935' },
   firmSub: { fontSize: 8, color: '#736F4C', letterSpacing: 1, marginTop: 2 },
@@ -104,7 +104,7 @@ export default function OpportunitiesPDF({ appState, pm, client, logo }) {
         {/* Header */}
         <View style={S.headerRow} fixed>
           <View style={S.headerLeft}>
-            {useLogo ? <Image src={useLogo} style={S.logo} /> : null}
+            {useLogo ? <Image src={useLogo} style={[S.logo, { marginRight: 10 }]} /> : null}
             <View>
               <Text style={S.firmName}>{firmName.toUpperCase()}</Text>
               <Text style={S.firmSub}>ARCHITECTS · PLANNERS</Text>
@@ -166,8 +166,8 @@ export default function OpportunitiesPDF({ appState, pm, client, logo }) {
                     <Text style={[S.cellOlive, { flex: 0.7 }]}>{o.pm || '—'}</Text>
                     <Text style={[S.cellOlive, { flex: 0.9 }]}>{o.status || '—'}</Text>
                     <Text style={[S.cellRight, { flex: 1 }]}>{fmt(o.fee || 0)}</Text>
-                    <View style={{ flex: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-                      <View style={S.wipBarOuter}>
+                    <View style={{ flex: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <View style={[S.wipBarOuter, { marginRight: 3 }]}>
                         <View style={[S.wipBarInner, { width: conf + '%' }]} />
                       </View>
                       <Text style={{ fontSize: 7, color: '#3D3935' }}>{conf}%</Text>
