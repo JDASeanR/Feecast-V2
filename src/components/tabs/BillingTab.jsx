@@ -124,6 +124,7 @@ export default function BillingTab({ appState, mutate, session }) {
 
   // ── Mutate helpers ────────────────────────────────────────────────────────
   const setPct = useCallback((projId, phId, mk, pct) => {
+    console.log('setPct called:', { projId, phId, mk, pct })
     mutate(prev => {
       const next = { ...prev, projects: prev.projects.map(p => {
         if (p.id !== projId) return p
