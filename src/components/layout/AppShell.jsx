@@ -378,9 +378,11 @@ export default function AppShell({ session, store }) {
           const isActive = activeTab === tab.id
           let badge = null
           if (tab.id === 'followup') {
-            const flaggedProjects = appState.projects.filter(p => !p.archived && !p.done && p.flag).length
+            const active = appState.projects.filter(p => !p.archived && !p.done)
+            const flaggedProjects = active.filter(p => p.flag).length
+            const flaggedPhases   = active.reduce((s, p) => s + p.phases.filter(ph => ph.flag).length, 0)
             const flaggedAR       = appState.invoices.filter(i => !i.paid && i.flag).length
-            const count           = flaggedProjects + flaggedAR
+            const count           = flaggedProjects + flaggedPhases + flaggedAR
             if (count > 0) badge = count
           }
           return (
