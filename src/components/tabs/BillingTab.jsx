@@ -111,7 +111,7 @@ export default function BillingTab({ appState, mutate, session }) {
       const next = { ...prev, projects: prev.projects.map(p => {
         if (p.id !== projId) return p
         return { ...p, phases: p.phases.map(ph => {
-          if (ph.id !== phId) return ph
+          if (ph.id == null || ph.id !== phId) return ph
           const fee     = phFeeFC(ph)
           const dollars = Math.round(fee * (pct / 100))
           return { ...ph, monthly: { ...ph.monthly, [mk]: dollars } }
