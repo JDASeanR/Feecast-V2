@@ -1,6 +1,6 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import * as d3 from 'd3'
-import { fmtK } from '../../lib/utils'
+import { fmtK, fmt } from '../../lib/utils'
 
 const CY = new Date().getFullYear()
 const CM = new Date().getMonth() + 1
@@ -25,42 +25,50 @@ const GOAL_BY_YEAR = {
   2022:420000,2023:395000,2024:330000,2025:395000,2026:395000,
 }
 
-const phFeeFC = ph => ph.scope === 'CA' ? (ph.fee||0) * (ph.caMonths||12) : (ph.fee||0)
-
 function mTotal(mk, projects) {
   return projects.filter(p=>!p.archived).reduce((s,p)=>s+p.phases.reduce((ps,ph)=>ps+(ph.monthly?.[mk]||0),0),0)
 }
 
 const TYPE_COLORS = {
   CA:'#4472C4', COM:'#C0392B', CODE:'#E67E22', MF:'#27AE60',
-  SL:'#8E44AD', PLN:'#F1C40F', SFD:'#5DADE2', DRP:'#E74C3C',
+  SL:'#8E44AD', PLN:'#D4AC0D', SFD:'#5DADE2', DRP:'#E74C3C',
   OA:'#95A5A6', OTHER:'#E88B8B',
 }
 
 const PM_COLORS = [
-  '#8B0000','#C0392B','#E67E22','#27AE60','#8E44AD','#F1C40F','#1A3A5C','#E88B8B',
+  '#8B0000','#C0392B','#E67E22','#27AE60','#8E44AD','#D4AC0D','#1A3A5C','#E88B8B',
   '#2ECC71','#3498DB','#E74C3C','#9B59B6',
 ]
 
-// ── Chart wrapper ─────────────────────────────────────────────────────────────
-function ChartCard({ title, color, children, style }) {
+// ── Chart card ────────────────────────────────────────────────────────────────
+function ChartCard({ title, kpis, children }) {
   return (
-    <div style={{
-      background: '#fff', borderRadius: 6, border: '1px solid rgba(61,57,53,0.1)',
-      overflow: 'hidden', ...style,
-    }}>
+    <div style={{ background: '#fff', borderRadius: 6, border: '1px solid rgba(61,57,53,0.08)', overflow: 'hidden' }}>
       <div style={{
-        background: color || '#8BC34A', padding: '8px 16px',
+        background: '#3D3935', padding: '10px 20px',
         fontFamily: '"League Gothic",sans-serif', fontSize: 14,
-        letterSpacing: '0.04em', color: '#fff', textTransform: 'uppercase',
-      }}>{title}</div>
-      <div style={{ padding: '20px 16px 12px' }}>{children}</div>
+        letterSpacing: '0.06em', color: '#F5F5F1', textTransform: 'uppercase',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span>{title}</span>
+        {kpis && (
+          <div style={{ display: 'flex', gap: 24 }}>
+            {kpis.map((k, i) => (
+              <span key={i} style={{ fontSize: 12, fontFamily: '"Nunito Sans",sans-serif', letterSpacing: 0 }}>
+                <span style={{ color: 'rgba(245,245,241,0.5)', marginRight: 6, textTransform: 'none' }}>{k.label}</span>
+                <span style={{ color: k.color || '#F5F5F1', fontWeight: 700 }}>{k.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ padding: '24px 20px 16px' }}>{children}</div>
     </div>
   )
 }
 
-// ── D3 Area Chart (reusable) ─────────────────────────────────────────────────
-function useD3Chart(renderFn, deps) {
+// ── D3 hook ──────────────────────────────────────────────────────────────────
+function useD3(renderFn, deps) {
   const ref = useRef(null)
   useEffect(() => {
     if (!ref.current) return
@@ -71,294 +79,396 @@ function useD3Chart(renderFn, deps) {
   return ref
 }
 
-// ── 1. Billing Progress (current year) ───────────────────────────────────────
+// ── WSJ-style hover crosshair ────────────────────────────────────────────────
+function addCrosshair(g, x, y, h, w, data, xAccessor, series, formatX) {
+  const overlay = g.append('rect').attr('width', w).attr('height', h).attr('fill', 'none').attr('pointer-events', 'all')
+  const crosshair = g.append('line').attr('y1', 0).attr('y2', h).attr('stroke', '#3D3935').attr('stroke-width', 0.5).attr('stroke-dasharray', '3 2').style('opacity', 0)
+  const tooltip = g.append('g').style('opacity', 0)
+  const tooltipBg = tooltip.append('rect').attr('rx', 4).attr('fill', '#3D3935').attr('fill-opacity', 0.92)
+  const tooltipText = tooltip.append('g')
+
+  overlay.on('mousemove', function(event) {
+    const [mx] = d3.pointer(event)
+    const xVal = x.invert(mx)
+    const bisect = d3.bisector(xAccessor).left
+    const idx = Math.min(data.length - 1, Math.max(0, bisect(data, xVal) - (bisect(data, xVal) > 0 ? 0 : 0)))
+    const closest = data[idx] || data[0]
+    const cx = x(xAccessor(closest))
+
+    crosshair.attr('x1', cx).attr('x2', cx).style('opacity', 1)
+
+    tooltipText.selectAll('*').remove()
+    const header = formatX(closest)
+    tooltipText.append('text').attr('x', 10).attr('y', 16).text(header)
+      .style('font-size', '11px').style('fill', '#F5F5F1').style('font-weight', 700)
+
+    series.forEach((s, i) => {
+      const val = s.accessor(closest)
+      if (val == null) return
+      const row = tooltipText.append('g').attr('transform', `translate(10,${32 + i * 16})`)
+      row.append('circle').attr('r', 3).attr('cy', -3).attr('fill', s.color)
+      row.append('text').attr('x', 10).attr('y', 0).text(`${s.label}: ${fmt(val)}`)
+        .style('font-size', '10px').style('fill', 'rgba(245,245,241,0.8)')
+    })
+
+    const rows = series.filter(s => s.accessor(closest) != null).length
+    const bw = 180, bh = 24 + rows * 16 + 4
+    tooltipBg.attr('width', bw).attr('height', bh)
+
+    let tx = cx + 12
+    if (tx + bw > w) tx = cx - bw - 12
+    tooltip.attr('transform', `translate(${tx},${10})`).style('opacity', 1)
+
+    series.forEach(s => {
+      const val = s.accessor(closest)
+      if (val == null) return
+      g.selectAll(`.dot-${s.key}`).remove()
+      g.append('circle').attr('class', `dot-${s.key}`).attr('cx', cx).attr('cy', y(val)).attr('r', 4)
+        .attr('fill', s.color).attr('stroke', '#fff').attr('stroke-width', 1.5)
+    })
+  })
+  .on('mouseleave', function() {
+    crosshair.style('opacity', 0)
+    tooltip.style('opacity', 0)
+    series.forEach(s => g.selectAll(`.dot-${s.key}`).remove())
+  })
+}
+
+// ── Shared axis styling ──────────────────────────────────────────────────────
+function styleAxes(g) {
+  g.selectAll('.domain').remove()
+  g.selectAll('.tick line').attr('stroke', '#ECEAE3').attr('stroke-width', 0.5)
+  g.selectAll('.tick text').style('font-size', '10px').style('fill', '#736F4C').style('font-family', '"Nunito Sans",sans-serif')
+}
+function addGridlines(g, y, w, ticks) {
+  g.append('g').selectAll('line').data(y.ticks(ticks)).join('line')
+    .attr('x1', 0).attr('x2', w).attr('y1', d => y(d)).attr('y2', d => y(d))
+    .attr('stroke', '#ECEAE3').attr('stroke-width', 0.5)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 1. BILLING PROGRESS
+// ══════════════════════════════════════════════════════════════════════════════
 function BillingProgressChart({ projects, hourlyData, monthlyGoal }) {
-  const ref = useD3Chart((svg, el) => {
-    const W = el.clientWidth, H = 300
-    const m = { top: 20, right: 120, bottom: 40, left: 70 }
-    const w = W - m.left - m.right, h = H - m.top - m.bottom
+  const data = []
+  for (let mo = 1; mo <= 12; mo++) {
+    const mk = `${CY}-${String(mo).padStart(2,'0')}`
+    const ff = mTotal(mk, projects), hourly = hourlyData[mk] || 0
+    data.push({ mo, label: MONTHS[mo-1], ff, gross: ff + hourly, goal: monthlyGoal })
+  }
+  const ytdFF = data.filter(d=>d.mo<CM).reduce((s,d)=>s+d.ff,0)
+
+  const ref = useD3((svg, el) => {
+    const W = el.clientWidth, H = 320
+    const m = { top: 10, right: 130, bottom: 36, left: 64 }
+    const w = W-m.left-m.right, h = H-m.top-m.bottom
     svg.attr('width', W).attr('height', H)
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`)
 
-    const data = []
-    for (let mo = 1; mo <= 12; mo++) {
-      const mk = `${CY}-${String(mo).padStart(2,'0')}`
-      const ff = mTotal(mk, projects)
-      const hourly = hourlyData[mk] || 0
-      data.push({ mo, ff, gross: ff + hourly, goal: monthlyGoal })
-    }
-
     const x = d3.scaleLinear().domain([1,12]).range([0,w])
-    const maxY = Math.max(monthlyGoal * 1.1, d3.max(data, d => d.gross) * 1.1)
-    const y = d3.scaleLinear().domain([0, maxY]).range([h, 0])
+    const maxY = Math.max(monthlyGoal*1.15, d3.max(data,d=>d.gross)*1.15) || 1
+    const y = d3.scaleLinear().domain([0,maxY]).range([h,0])
 
-    const goalArea = d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d.goal)).curve(d3.curveLinear)
-    g.append('path').datum(data).attr('d', goalArea).attr('fill', 'rgba(70,130,210,0.12)')
-    const ffArea = d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d.ff)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data.filter(d=>d.ff>0||d.mo<CM)).attr('d', ffArea).attr('fill', 'rgba(192,57,43,0.2)')
-    const grossArea = d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d.gross)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data.filter(d=>d.gross>0||d.mo<CM)).attr('d', grossArea).attr('fill', 'rgba(230,180,60,0.15)')
+    addGridlines(g, y, w, 6)
 
-    const goalLine = d3.line().x(d=>x(d.mo)).y(d=>y(d.goal)).curve(d3.curveLinear)
-    g.append('path').datum(data).attr('d', goalLine).attr('fill','none').attr('stroke','#4472C4').attr('stroke-width',2.5)
-    const ffLine = d3.line().x(d=>x(d.mo)).y(d=>y(d.ff)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data.filter(d=>d.ff>0||d.mo<CM)).attr('d', ffLine).attr('fill','none').attr('stroke','#C0392B').attr('stroke-width',2)
-    const grossLine = d3.line().x(d=>x(d.mo)).y(d=>y(d.gross)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data.filter(d=>d.gross>0||d.mo<CM)).attr('d', grossLine).attr('fill','none').attr('stroke','#E6A800').attr('stroke-width',1.5).attr('stroke-dasharray','4 2')
+    const area = (acc,color) => {
+      g.append('path').datum(data).attr('d', d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(acc(d))).curve(d3.curveMonotoneX)).attr('fill',color)
+    }
+    area(d=>d.goal, 'rgba(70,130,210,0.08)')
+    area(d=>d.gross, 'rgba(230,180,60,0.12)')
+    area(d=>d.ff, 'rgba(192,57,43,0.12)')
 
-    data.forEach(d => {
-      g.append('circle').attr('cx',x(d.mo)).attr('cy',y(d.goal)).attr('r',3).attr('fill','#4472C4')
-    })
+    const ln = (acc,color,sw,dash) => {
+      g.append('path').datum(data).attr('d', d3.line().x(d=>x(d.mo)).y(d=>y(acc(d))).curve(d3.curveMonotoneX))
+        .attr('fill','none').attr('stroke',color).attr('stroke-width',sw)
+      if (dash) g.select('path:last-child').attr('stroke-dasharray', dash)
+    }
+    ln(d=>d.goal,'#4472C4',2.5)
+    ln(d=>d.ff,'#C0392B',2)
+    ln(d=>d.gross,'#E6A800',1.5,'5 3')
 
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>fmtK(d))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.selectAll('.domain,.tick line').attr('stroke','#ECEAE3')
+    data.forEach(d => g.append('circle').attr('cx',x(d.mo)).attr('cy',y(d.goal)).attr('r',3).attr('fill','#4472C4').attr('stroke','#fff').attr('stroke-width',1))
 
-    const legend = svg.append('g').attr('transform',`translate(${W-100},${m.top+10})`)
-    ;[{label:'GOAL',color:'#4472C4'},{label:'FF',color:'#C0392B'},{label:'GROSS',color:'#E6A800'}].forEach((l,i) => {
-      const ly = legend.append('g').attr('transform',`translate(0,${i*18})`)
-      ly.append('circle').attr('r',4).attr('fill',l.color)
-      ly.append('text').attr('x',10).attr('y',4).text(l.label).style('font-size','11px').style('fill','#3D3935')
+    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2))).call(styleAxes)
+    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(fmtK)).call(styleAxes)
+
+    addCrosshair(g, x, y, h, w, data, d=>d.mo,
+      [{key:'goal',label:'Goal',color:'#4472C4',accessor:d=>d.goal},{key:'ff',label:'FF',color:'#C0392B',accessor:d=>d.ff},{key:'gross',label:'Gross',color:'#E6A800',accessor:d=>d.gross}],
+      d => d.label + ' ' + CY
+    )
+
+    const leg = svg.append('g').attr('transform',`translate(${W-110},${m.top+20})`)
+    ;[{l:'Goal',c:'#4472C4'},{l:'Fixed Fee',c:'#C0392B'},{l:'Gross',c:'#E6A800'}].forEach((s,i)=>{
+      const r=leg.append('g').attr('transform',`translate(0,${i*20})`)
+      r.append('line').attr('x1',0).attr('x2',16).attr('y',0).attr('stroke',s.c).attr('stroke-width',2)
+      r.append('text').attr('x',22).attr('y',4).text(s.l).style('font-size','11px').style('fill','#3D3935')
     })
   }, [projects, hourlyData, monthlyGoal])
-  return <svg ref={ref} style={{ width: '100%', height: 300 }} />
+
+  return (
+    <ChartCard title={`${CY} Billing Progress`} kpis={[
+      {label:'YTD FF', value:fmtK(ytdFF), color:'#C0392B'},
+      {label:'Monthly Goal', value:fmtK(monthlyGoal), color:'#4472C4'},
+    ]}>
+      <svg ref={ref} style={{width:'100%',height:320}} />
+    </ChartCard>
+  )
 }
 
-// ── 2. Projections by Project Type ───────────────────────────────────────────
-function ProjectionsByTypeChart({ projects, types }) {
-  const ref = useD3Chart((svg, el) => {
+// ══════════════════════════════════════════════════════════════════════════════
+// 2. PROJECTIONS BY TYPE
+// ══════════════════════════════════════════════════════════════════════════════
+function ProjectionsByTypeChart({ projects }) {
+  const ref = useD3((svg, el) => {
     const W = el.clientWidth, H = 300
-    const m = { top: 20, right: 140, bottom: 40, left: 70 }
-    const w = W - m.left - m.right, h = H - m.top - m.bottom
+    const m = { top: 10, right: 130, bottom: 36, left: 64 }
+    const w = W-m.left-m.right, h = H-m.top-m.bottom
     svg.attr('width', W).attr('height', H)
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`)
 
-    const typeCodes = [...new Set(projects.flatMap(p => p.phases.map(ph => ph.scope || p.type || 'OTHER')))]
+    const typeCodes = [...new Set(projects.filter(p=>!p.archived).flatMap(p => p.phases.map(ph => ph.scope || p.type || 'OTHER')))]
     const data = []
-    for (let mo = 1; mo <= 12; mo++) {
-      const mk = `${CY}-${String(mo).padStart(2,'0')}`
-      const row = { mo }
-      typeCodes.forEach(t => { row[t] = 0 })
-      projects.filter(p=>!p.archived).forEach(p => {
-        p.phases.forEach(ph => {
-          const t = ph.scope || p.type || 'OTHER'
-          row[t] = (row[t]||0) + (ph.monthly?.[mk]||0)
-        })
-      })
+    for (let mo=1;mo<=12;mo++) {
+      const mk=`${CY}-${String(mo).padStart(2,'0')}`
+      const row={mo,label:MONTHS[mo-1]}
+      typeCodes.forEach(t=>{row[t]=0})
+      projects.filter(p=>!p.archived).forEach(p=>p.phases.forEach(ph=>{const t=ph.scope||p.type||'OTHER';row[t]=(row[t]||0)+(ph.monthly?.[mk]||0)}))
       data.push(row)
     }
+    const active = typeCodes.filter(t=>data.some(d=>(d[t]||0)>0))
 
-    const activeTypes = typeCodes.filter(t => data.some(d => (d[t]||0) > 0))
     const x = d3.scaleLinear().domain([1,12]).range([0,w])
-    const maxY = d3.max(data, d => activeTypes.reduce((s,t)=>s+(d[t]||0),0)) * 1.1 || 1
-    const y = d3.scaleLinear().domain([0, maxY]).range([h, 0])
+    const maxY = d3.max(data,d=>active.reduce((s,t)=>s+(d[t]||0),0))*1.15||1
+    const y = d3.scaleLinear().domain([0,maxY]).range([h,0])
+    addGridlines(g,y,w,5)
 
-    activeTypes.forEach(t => {
-      const color = TYPE_COLORS[t] || '#999'
-      const area = d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d[t]||0)).curve(d3.curveBasis)
-      g.append('path').datum(data).attr('d', area).attr('fill', color).attr('fill-opacity', 0.25)
-      const line = d3.line().x(d=>x(d.mo)).y(d=>y(d[t]||0)).curve(d3.curveBasis)
-      g.append('path').datum(data).attr('d', line).attr('fill','none').attr('stroke', color).attr('stroke-width', 1.5)
+    active.forEach(t=>{
+      const c=TYPE_COLORS[t]||'#999'
+      g.append('path').datum(data).attr('d',d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d[t]||0)).curve(d3.curveBasis)).attr('fill',c).attr('fill-opacity',0.18)
+      g.append('path').datum(data).attr('d',d3.line().x(d=>x(d.mo)).y(d=>y(d[t]||0)).curve(d3.curveBasis)).attr('fill','none').attr('stroke',c).attr('stroke-width',1.5)
     })
 
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2)+' $')).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>fmtK(d))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.selectAll('.domain,.tick line').attr('stroke','#ECEAE3')
+    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2))).call(styleAxes)
+    g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(fmtK)).call(styleAxes)
 
-    const legend = svg.append('g').attr('transform',`translate(${W-120},${m.top+5})`)
-    activeTypes.forEach((t,i) => {
-      const ly = legend.append('g').attr('transform',`translate(0,${i*17})`)
-      ly.append('circle').attr('r',4).attr('fill',TYPE_COLORS[t]||'#999')
-      ly.append('text').attr('x',10).attr('y',4).text(t).style('font-size','11px').style('fill','#3D3935')
+    addCrosshair(g,x,y,h,w,data,d=>d.mo,
+      active.map(t=>({key:t,label:t,color:TYPE_COLORS[t]||'#999',accessor:d=>d[t]||0})),
+      d=>d.label+' '+CY
+    )
+
+    const leg=svg.append('g').attr('transform',`translate(${W-110},${m.top+5})`)
+    active.forEach((t,i)=>{
+      const r=leg.append('g').attr('transform',`translate(0,${i*17})`)
+      r.append('circle').attr('r',4).attr('fill',TYPE_COLORS[t]||'#999')
+      r.append('text').attr('x',12).attr('y',4).text(t).style('font-size','11px').style('fill','#3D3935')
     })
-  }, [projects, types])
-  return <svg ref={ref} style={{ width: '100%', height: 300 }} />
+  }, [projects])
+  return (
+    <ChartCard title={`${CY} Projections by Project Type`}>
+      <svg ref={ref} style={{width:'100%',height:300}} />
+    </ChartCard>
+  )
 }
 
-// ── 3. Fees by PM ────────────────────────────────────────────────────────────
-function FeesByPMChart({ projects, pms }) {
-  const ref = useD3Chart((svg, el) => {
+// ══════════════════════════════════════════════════════════════════════════════
+// 3. FEES BY PM
+// ══════════════════════════════════════════════════════════════════════════════
+function FeesByPMChart({ projects }) {
+  const ref = useD3((svg, el) => {
     const W = el.clientWidth, H = 300
-    const m = { top: 20, right: 120, bottom: 40, left: 70 }
-    const w = W - m.left - m.right, h = H - m.top - m.bottom
+    const m = { top: 10, right: 110, bottom: 36, left: 64 }
+    const w = W-m.left-m.right, h = H-m.top-m.bottom
     svg.attr('width', W).attr('height', H)
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`)
 
-    const pmNames = [...new Set(projects.filter(p=>!p.archived).map(p=>p.pm).filter(Boolean))]
-    const data = []
-    for (let mo = 1; mo <= 12; mo++) {
-      const mk = `${CY}-${String(mo).padStart(2,'0')}`
-      const row = { mo }
-      pmNames.forEach(pm => { row[pm] = 0 })
-      projects.filter(p=>!p.archived).forEach(p => {
-        const v = p.phases.reduce((s,ph)=>s+(ph.monthly?.[mk]||0),0)
-        if (p.pm) row[p.pm] = (row[p.pm]||0) + v
-      })
+    const pmNames=[...new Set(projects.filter(p=>!p.archived).map(p=>p.pm).filter(Boolean))]
+    const data=[]
+    for(let mo=1;mo<=12;mo++){
+      const mk=`${CY}-${String(mo).padStart(2,'0')}`
+      const row={mo,label:MONTHS[mo-1]}
+      pmNames.forEach(pm=>{row[pm]=0})
+      projects.filter(p=>!p.archived).forEach(p=>{if(p.pm)row[p.pm]=(row[p.pm]||0)+p.phases.reduce((s,ph)=>s+(ph.monthly?.[mk]||0),0)})
       data.push(row)
     }
+    const active=pmNames.filter(pm=>data.some(d=>(d[pm]||0)>0))
 
-    const activePMs = pmNames.filter(pm => data.some(d => (d[pm]||0) > 0))
-    const x = d3.scaleLinear().domain([1,12]).range([0,w])
-    const maxY = d3.max(data, d => d3.max(activePMs, pm=>d[pm]||0)) * 1.15 || 1
-    const y = d3.scaleLinear().domain([0, maxY]).range([h, 0])
+    const x=d3.scaleLinear().domain([1,12]).range([0,w])
+    const maxY=d3.max(data,d=>d3.max(active,pm=>d[pm]||0))*1.15||1
+    const y=d3.scaleLinear().domain([0,maxY]).range([h,0])
+    addGridlines(g,y,w,5)
 
-    activePMs.forEach((pm, i) => {
-      const color = PM_COLORS[i % PM_COLORS.length]
-      const area = d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d[pm]||0)).curve(d3.curveBasis)
-      g.append('path').datum(data).attr('d', area).attr('fill', color).attr('fill-opacity', 0.2)
-      const line = d3.line().x(d=>x(d.mo)).y(d=>y(d[pm]||0)).curve(d3.curveBasis)
-      g.append('path').datum(data).attr('d', line).attr('fill','none').attr('stroke', color).attr('stroke-width', 1.5)
+    active.forEach((pm,i)=>{
+      const c=PM_COLORS[i%PM_COLORS.length]
+      g.append('path').datum(data).attr('d',d3.area().x(d=>x(d.mo)).y0(h).y1(d=>y(d[pm]||0)).curve(d3.curveBasis)).attr('fill',c).attr('fill-opacity',0.15)
+      g.append('path').datum(data).attr('d',d3.line().x(d=>x(d.mo)).y(d=>y(d[pm]||0)).curve(d3.curveBasis)).attr('fill','none').attr('stroke',c).attr('stroke-width',1.5)
     })
 
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>fmtK(d))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.selectAll('.domain,.tick line').attr('stroke','#ECEAE3')
+    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(12).tickFormat(i=>MONTHS[i-1]+' '+String(CY).slice(2))).call(styleAxes)
+    g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(fmtK)).call(styleAxes)
 
-    const legend = svg.append('g').attr('transform',`translate(${W-100},${m.top+5})`)
-    activePMs.forEach((pm, i) => {
-      const ly = legend.append('g').attr('transform',`translate(0,${i*17})`)
-      ly.append('circle').attr('r',4).attr('fill',PM_COLORS[i % PM_COLORS.length])
-      ly.append('text').attr('x',10).attr('y',4).text(pm).style('font-size','11px').style('fill','#3D3935')
+    addCrosshair(g,x,y,h,w,data,d=>d.mo,
+      active.map((pm,i)=>({key:pm,label:pm,color:PM_COLORS[i%PM_COLORS.length],accessor:d=>d[pm]||0})),
+      d=>d.label+' '+CY
+    )
+
+    const leg=svg.append('g').attr('transform',`translate(${W-90},${m.top+5})`)
+    active.forEach((pm,i)=>{
+      const r=leg.append('g').attr('transform',`translate(0,${i*17})`)
+      r.append('circle').attr('r',4).attr('fill',PM_COLORS[i%PM_COLORS.length])
+      r.append('text').attr('x',12).attr('y',4).text(pm).style('font-size','11px').style('fill','#3D3935')
     })
-  }, [projects, pms])
-  return <svg ref={ref} style={{ width: '100%', height: 300 }} />
+  }, [projects])
+  return (
+    <ChartCard title={`${CY} Fees by PM`}>
+      <svg ref={ref} style={{width:'100%',height:300}} />
+    </ChartCard>
+  )
 }
 
-// ── 4. Historical Billings (monthly) ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// 4. HISTORICAL MONTHLY
+// ══════════════════════════════════════════════════════════════════════════════
 function HistoricalMonthlyChart({ projects, hourlyData, monthlyGoal }) {
-  const ref = useD3Chart((svg, el) => {
-    const W = el.clientWidth, H = 320
-    const m = { top: 20, right: 120, bottom: 50, left: 70 }
-    const w = W - m.left - m.right, h = H - m.top - m.bottom
+  const ref = useD3((svg, el) => {
+    const W = el.clientWidth, H = 340
+    const m = { top: 10, right: 130, bottom: 50, left: 64 }
+    const w = W-m.left-m.right, h = H-m.top-m.bottom
     svg.attr('width', W).attr('height', H)
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`)
 
-    const data = []
-    Object.keys(HIST_ALL).map(Number).sort().forEach(yr => {
-      Object.entries(HIST_ALL[yr]).forEach(([mo, d]) => {
-        if (d.g != null) {
-          const goal = GOAL_BY_YEAR[yr] || monthlyGoal
-          data.push({ date: new Date(yr, +mo-1, 1), gross: d.g, ff: d.g * 0.85, goal })
-        }
+    const data=[]
+    Object.keys(HIST_ALL).map(Number).sort().forEach(yr=>{
+      Object.entries(HIST_ALL[yr]).forEach(([mo,d])=>{
+        if(d.g!=null){const goal=GOAL_BY_YEAR[yr]||monthlyGoal;data.push({date:new Date(yr,+mo-1,1),gross:d.g,ff:d.g*0.85,goal})}
       })
     })
-    for (let mo = 1; mo < CM; mo++) {
-      const mk = `${CY}-${String(mo).padStart(2,'0')}`
-      const ff = mTotal(mk, projects)
-      const hourly = hourlyData[mk] || 0
-      const existing = data.find(d => d.date.getFullYear() === CY && d.date.getMonth() === mo-1)
-      if (existing) { existing.ff = ff; existing.gross = ff + hourly }
+    for(let mo=1;mo<CM;mo++){
+      const mk=`${CY}-${String(mo).padStart(2,'0')}`
+      const ff=mTotal(mk,projects),hourly=hourlyData[mk]||0
+      const ex=data.find(d=>d.date.getFullYear()===CY&&d.date.getMonth()===mo-1)
+      if(ex){ex.ff=ff;ex.gross=ff+hourly}
     }
 
-    const x = d3.scaleTime().domain(d3.extent(data, d=>d.date)).range([0,w])
-    const maxY = d3.max(data, d => Math.max(d.gross, d.goal)) * 1.1
-    const y = d3.scaleLinear().domain([0, maxY]).range([h, 0])
+    const x=d3.scaleTime().domain(d3.extent(data,d=>d.date)).range([0,w])
+    const maxY=d3.max(data,d=>Math.max(d.gross,d.goal))*1.1
+    const y=d3.scaleLinear().domain([0,maxY]).range([h,0])
+    addGridlines(g,y,w,6)
 
-    const goalArea = d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.goal)).curve(d3.curveStepAfter)
-    g.append('path').datum(data).attr('d', goalArea).attr('fill', 'rgba(70,130,210,0.1)')
-    const ffArea = d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.ff)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data).attr('d', ffArea).attr('fill', 'rgba(192,57,43,0.15)')
-    const grossArea = d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.gross)).curve(d3.curveMonotoneX)
-    g.append('path').datum(data).attr('d', grossArea).attr('fill', 'rgba(230,180,60,0.12)')
+    g.append('path').datum(data).attr('d',d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.goal)).curve(d3.curveStepAfter)).attr('fill','rgba(70,130,210,0.06)')
+    g.append('path').datum(data).attr('d',d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.gross)).curve(d3.curveMonotoneX)).attr('fill','rgba(230,180,60,0.1)')
+    g.append('path').datum(data).attr('d',d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.ff)).curve(d3.curveMonotoneX)).attr('fill','rgba(192,57,43,0.1)')
 
-    g.append('path').datum(data).attr('d', d3.line().x(d=>x(d.date)).y(d=>y(d.goal)).curve(d3.curveStepAfter)).attr('fill','none').attr('stroke','#4472C4').attr('stroke-width',2)
-    g.append('path').datum(data).attr('d', d3.line().x(d=>x(d.date)).y(d=>y(d.ff)).curve(d3.curveMonotoneX)).attr('fill','none').attr('stroke','#C0392B').attr('stroke-width',1.5)
-    g.append('path').datum(data).attr('d', d3.line().x(d=>x(d.date)).y(d=>y(d.gross)).curve(d3.curveMonotoneX)).attr('fill','none').attr('stroke','#E6A800').attr('stroke-width',1.5)
+    g.append('path').datum(data).attr('d',d3.line().x(d=>x(d.date)).y(d=>y(d.goal)).curve(d3.curveStepAfter)).attr('fill','none').attr('stroke','#4472C4').attr('stroke-width',2)
+    g.append('path').datum(data).attr('d',d3.line().x(d=>x(d.date)).y(d=>y(d.ff)).curve(d3.curveMonotoneX)).attr('fill','none').attr('stroke','#C0392B').attr('stroke-width',1.5)
+    g.append('path').datum(data).attr('d',d3.line().x(d=>x(d.date)).y(d=>y(d.gross)).curve(d3.curveMonotoneX)).attr('fill','none').attr('stroke','#E6A800').attr('stroke-width',1.5)
 
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat('%b \'%y'))).selectAll('text').style('font-size','9px').style('fill','#736F4C').attr('transform','rotate(-45)').attr('text-anchor','end')
-    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>fmtK(d))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.selectAll('.domain,.tick line').attr('stroke','#ECEAE3')
+    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("'%y"))).call(styleAxes)
+    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(fmtK)).call(styleAxes)
 
-    const legend = svg.append('g').attr('transform',`translate(${W-100},${m.top+10})`)
-    ;[{label:'GOAL',color:'#4472C4'},{label:'FF',color:'#C0392B'},{label:'GROSS',color:'#E6A800'}].forEach((l,i) => {
-      const ly = legend.append('g').attr('transform',`translate(0,${i*18})`)
-      ly.append('circle').attr('r',4).attr('fill',l.color)
-      ly.append('text').attr('x',10).attr('y',4).text(l.label).style('font-size','11px').style('fill','#3D3935')
+    addCrosshair(g,x,y,h,w,data,d=>d.date,
+      [{key:'goal',label:'Goal',color:'#4472C4',accessor:d=>d.goal},{key:'ff',label:'FF',color:'#C0392B',accessor:d=>d.ff},{key:'gross',label:'Gross',color:'#E6A800',accessor:d=>d.gross}],
+      d=>MONTHS[d.date.getMonth()]+' '+d.date.getFullYear()
+    )
+
+    const leg=svg.append('g').attr('transform',`translate(${W-110},${m.top+20})`)
+    ;[{l:'Goal',c:'#4472C4'},{l:'Fixed Fee',c:'#C0392B'},{l:'Gross',c:'#E6A800'}].forEach((s,i)=>{
+      const r=leg.append('g').attr('transform',`translate(0,${i*20})`)
+      r.append('line').attr('x1',0).attr('x2',16).attr('y',0).attr('stroke',s.c).attr('stroke-width',2)
+      r.append('text').attr('x',22).attr('y',4).text(s.l).style('font-size','11px').style('fill','#3D3935')
     })
   }, [projects, hourlyData, monthlyGoal])
-  return <svg ref={ref} style={{ width: '100%', height: 320 }} />
+
+  const years = Object.keys(HIST_ALL).map(Number).sort()
+  return (
+    <ChartCard title={`Historical Billings | ${years[0]}–${CY}`} kpis={[
+      {label:'Years', value:String(years.length)},
+      {label:'Peak', value:fmtK(d3.max(Object.values(HIST_ALL).flatMap(yr=>Object.values(yr).map(d=>d.g||0)))), color:'#E6A800'},
+    ]}>
+      <svg ref={ref} style={{width:'100%',height:340}} />
+    </ChartCard>
+  )
 }
 
-// ── 5. Historical Annual Tracking (cumulative sawtooth) ──────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// 5. HISTORICAL ANNUAL TRACKING
+// ══════════════════════════════════════════════════════════════════════════════
 function HistoricalAnnualChart({ monthlyGoal }) {
-  const ref = useD3Chart((svg, el) => {
-    const W = el.clientWidth, H = 320
-    const m = { top: 20, right: 120, bottom: 50, left: 80 }
-    const w = W - m.left - m.right, h = H - m.top - m.bottom
+  const ref = useD3((svg, el) => {
+    const W = el.clientWidth, H = 340
+    const m = { top: 10, right: 130, bottom: 50, left: 80 }
+    const w = W-m.left-m.right, h = H-m.top-m.bottom
     svg.attr('width', W).attr('height', H)
     const g = svg.append('g').attr('transform', `translate(${m.left},${m.top})`)
 
-    const grossData = [], goalData = []
-    Object.keys(HIST_ALL).map(Number).sort().forEach(yr => {
-      let cum = 0
-      const goal = GOAL_BY_YEAR[yr] || monthlyGoal
-      let cumGoal = 0
-      Object.entries(HIST_ALL[yr]).sort((a,b)=>+a[0]-+b[0]).forEach(([mo, d]) => {
-        const date = new Date(yr, +mo-1, 1)
-        if (d.g != null) { cum += d.g; grossData.push({ date, val: cum }) }
-        cumGoal += goal; goalData.push({ date, val: cumGoal })
+    const grossData=[], goalData=[]
+    Object.keys(HIST_ALL).map(Number).sort().forEach(yr=>{
+      let cum=0,cumGoal=0
+      const goal=GOAL_BY_YEAR[yr]||monthlyGoal
+      Object.entries(HIST_ALL[yr]).sort((a,b)=>+a[0]-+b[0]).forEach(([mo,d])=>{
+        const date=new Date(yr,+mo-1,1)
+        if(d.g!=null){cum+=d.g;grossData.push({date,val:cum,yr})}
+        cumGoal+=goal;goalData.push({date,val:cumGoal,yr})
       })
     })
 
-    const allDates = grossData.map(d=>d.date)
-    const x = d3.scaleTime().domain(d3.extent(allDates)).range([0,w])
-    const maxY = Math.max(d3.max(grossData, d=>d.val), d3.max(goalData, d=>d.val)) * 1.05
-    const y = d3.scaleLinear().domain([0, maxY]).range([h, 0])
+    const x=d3.scaleTime().domain(d3.extent(grossData,d=>d.date)).range([0,w])
+    const maxY=Math.max(d3.max(grossData,d=>d.val),d3.max(goalData,d=>d.val))*1.05
+    const y=d3.scaleLinear().domain([0,maxY]).range([h,0])
+    addGridlines(g,y,w,6)
 
-    const goalArea = d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.val)).curve(d3.curveStepAfter)
-    g.append('path').datum(goalData).attr('d', goalArea).attr('fill', 'rgba(192,57,43,0.08)')
-    const grossArea = d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.val)).curve(d3.curveLinear)
-    g.append('path').datum(grossData).attr('d', grossArea).attr('fill', 'rgba(70,130,210,0.1)')
+    g.append('path').datum(goalData).attr('d',d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.val)).curve(d3.curveStepAfter)).attr('fill','rgba(192,57,43,0.06)')
+    g.append('path').datum(grossData).attr('d',d3.area().x(d=>x(d.date)).y0(h).y1(d=>y(d.val)).curve(d3.curveLinear)).attr('fill','rgba(70,130,210,0.08)')
 
-    g.append('path').datum(goalData).attr('d', d3.line().x(d=>x(d.date)).y(d=>y(d.val)).curve(d3.curveStepAfter)).attr('fill','none').attr('stroke','#C0392B').attr('stroke-width',2)
-    g.append('path').datum(grossData).attr('d', d3.line().x(d=>x(d.date)).y(d=>y(d.val)).curve(d3.curveLinear)).attr('fill','none').attr('stroke','#4472C4').attr('stroke-width',2)
+    g.append('path').datum(goalData).attr('d',d3.line().x(d=>x(d.date)).y(d=>y(d.val)).curve(d3.curveStepAfter)).attr('fill','none').attr('stroke','#C0392B').attr('stroke-width',2)
+    g.append('path').datum(grossData).attr('d',d3.line().x(d=>x(d.date)).y(d=>y(d.val)).curve(d3.curveLinear)).attr('fill','none').attr('stroke','#4472C4').attr('stroke-width',2)
 
-    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat('%b \'%y'))).selectAll('text').style('font-size','9px').style('fill','#736F4C').attr('transform','rotate(-45)').attr('text-anchor','end')
-    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>fmtK(d))).selectAll('text').style('font-size','10px').style('fill','#736F4C')
-    g.selectAll('.domain,.tick line').attr('stroke','#ECEAE3')
+    g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("'%y"))).call(styleAxes)
+    g.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(fmtK)).call(styleAxes)
 
-    const legend = svg.append('g').attr('transform',`translate(${W-115},${m.top+10})`)
-    ;[{label:'Gross Billings',color:'#4472C4'},{label:'Goal Billings',color:'#C0392B'}].forEach((l,i) => {
-      const ly = legend.append('g').attr('transform',`translate(0,${i*18})`)
-      ly.append('circle').attr('r',4).attr('fill',l.color)
-      ly.append('text').attr('x',10).attr('y',4).text(l.label).style('font-size','11px').style('fill','#3D3935')
+    const merged=grossData.map((d,i)=>({...d,goal:goalData[i]?.val||0}))
+    addCrosshair(g,x,y,h,w,merged,d=>d.date,
+      [{key:'gross',label:'Gross YTD',color:'#4472C4',accessor:d=>d.val},{key:'goal',label:'Goal YTD',color:'#C0392B',accessor:d=>d.goal}],
+      d=>MONTHS[d.date.getMonth()]+' '+d.date.getFullYear()
+    )
+
+    const leg=svg.append('g').attr('transform',`translate(${W-120},${m.top+20})`)
+    ;[{l:'Gross Billings',c:'#4472C4'},{l:'Goal Billings',c:'#C0392B'}].forEach((s,i)=>{
+      const r=leg.append('g').attr('transform',`translate(0,${i*20})`)
+      r.append('line').attr('x1',0).attr('x2',16).attr('y',0).attr('stroke',s.c).attr('stroke-width',2)
+      r.append('text').attr('x',22).attr('y',4).text(s.l).style('font-size','11px').style('fill','#3D3935')
     })
   }, [monthlyGoal])
-  return <svg ref={ref} style={{ width: '100%', height: 320 }} />
+
+  return (
+    <ChartCard title="Historical Billings | Annual Tracking" kpis={[
+      {label:'Current Goal', value:fmtK((GOAL_BY_YEAR[CY]||monthlyGoal)*12)+'/yr', color:'#C0392B'},
+    ]}>
+      <svg ref={ref} style={{width:'100%',height:340}} />
+    </ChartCard>
+  )
 }
 
-// ── Main Tab ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN TAB
+// ══════════════════════════════════════════════════════════════════════════════
 export default function WidgetsTab({ appState }) {
   const { projects, settings } = appState
   const hourlyData  = settings.billing?.hourlyByMonth || {}
   const monthlyGoal = settings.billing?.monthlyGoal || 395000
-  const pms = (settings.pms || []).map(p => p.name)
-  const types = settings.projectTypes || []
 
   return (
-    <div className="overflow-auto" style={{ height: 'calc(100vh - 88px)', background: '#ECEAE3', padding: 20 }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="overflow-auto" style={{ height: 'calc(100vh - 88px)', background: '#F5F5F1', padding: 24 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        <ChartCard title={`${CY} Billing Progress`} color="#8BC34A">
-          <BillingProgressChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} />
-        </ChartCard>
+        <BillingProgressChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <ChartCard title={`${CY} Projections by Project Type`} color="#8BC34A">
-            <ProjectionsByTypeChart projects={projects} types={types} />
-          </ChartCard>
-          <ChartCard title={`${CY} Fees by PM`} color="#8BC34A">
-            <FeesByPMChart projects={projects} pms={pms} />
-          </ChartCard>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <ProjectionsByTypeChart projects={projects} />
+          <FeesByPMChart projects={projects} />
         </div>
 
-        <ChartCard title="Historical Billings Data | From 2016" color="#6FA8DC">
-          <HistoricalMonthlyChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} />
-        </ChartCard>
-
-        <ChartCard title="Historical Billings | Annual Tracking" color="#6FA8DC">
-          <HistoricalAnnualChart monthlyGoal={monthlyGoal} />
-        </ChartCard>
+        <HistoricalMonthlyChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} />
+        <HistoricalAnnualChart monthlyGoal={monthlyGoal} />
 
       </div>
     </div>
