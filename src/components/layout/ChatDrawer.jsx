@@ -78,7 +78,7 @@ function MentionMenu({ suggestions, onSelect, style }) {
   )
 }
 
-export default function ChatDrawer({ session, open, onClose, onUnread, pms = [] }) {
+export default function ChatDrawer({ session, open, onClose, onUnread, onToast, pms = [] }) {
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
@@ -129,7 +129,15 @@ export default function ChatDrawer({ session, open, onClose, onUnread, pms = [] 
           }
           return [...prev, payload.new]
         })
-        if (!open && payload.new.user_email !== myEmail) onUnread(n => n + 1)
+        if (payload.new.user_email !== myEmail) {
+          if (!open) {
+            onToast?.(payload.new)
+          } else {
+            // Drawer is open — only ping unread if it's a mention
+            const isMention = payload.new.text.includes('@' + myEmail.split('@')[0])
+            if (isMention) onToast?.(payload.new)
+          }
+        }
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }

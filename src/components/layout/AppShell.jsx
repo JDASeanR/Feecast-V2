@@ -16,6 +16,7 @@ import ReportsTab from '../tabs/ReportsTab.jsx'
 import WidgetsTab from '../tabs/WidgetsTab.jsx'
 import UserGuide from './UserGuide.jsx'
 import ChatDrawer from './ChatDrawer.jsx'
+import ChatToast from './ChatToast.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -199,6 +200,18 @@ export default function AppShell({ session, store }) {
   const [guideOpen, setGuideOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatUnread, setChatUnread] = useState(0)
+  const [chatToasts, setChatToasts] = useState([])
+  const myEmail = session?.user?.email || ''
+
+  const addToast = useCallback((msg) => {
+    const isMention = msg.text.includes('@' + myEmail.split('@')[0])
+    setChatToasts(prev => [...prev, { ...msg, isMention, id: msg.id + '_toast' }])
+    setChatUnread(n => n + 1)
+  }, [myEmail])
+
+  const dismissToast = useCallback((id) => {
+    setChatToasts(prev => prev.filter(t => t.id !== id))
+  }, [])
   const [dragTab, setDragTab] = useState(null)
 
   const orderedTabs = tabOrder
@@ -499,7 +512,13 @@ export default function AppShell({ session, store }) {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         onUnread={setChatUnread}
+        onToast={addToast}
         pms={appState.settings?.pms || []}
+      />
+      <ChatToast
+        toasts={chatToasts}
+        onDismiss={dismissToast}
+        onOpenChat={() => { setChatOpen(true); setChatUnread(0); setChatToasts([]) }}
       />
     </div>
   )
