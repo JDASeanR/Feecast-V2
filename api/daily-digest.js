@@ -242,7 +242,9 @@ module.exports = async function handler(req, res) {
       bodyRecipients = Array.isArray(body.recipients) ? body.recipients : [];
     } catch(e) {}
 
+    console.log('Step 1: fetching state');
     const state = await fetchState();
+    console.log('Step 2: state fetched — projects:', state.projects?.length, 'invoices:', state.invoices?.length);
     const digest = state.settings?.firm?.digest || {};
     const sections = digest.sections || { billing:true, ar:true, flagged:true, pipeline:true };
 
@@ -253,13 +255,17 @@ module.exports = async function handler(req, res) {
       ? digest.recipients
       : ['srichardson@jdaarch.com'];
 
+    console.log('Step 3: recipients:', recipients);
     const d    = calcDigest(state);
+    console.log('Step 4: digest calc done — ytd:', d.ytd, 'curMonth:', d.curMonth);
     const html = buildEmail(d, sections);
+    console.log('Step 5: email built, length:', html?.length);
 
     if (!RESEND_KEY) {
       return res.status(500).json({ error: 'RESEND_API_KEY not set' });
     }
 
+    console.log('Step 6: sending via Resend to:', recipients);
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
