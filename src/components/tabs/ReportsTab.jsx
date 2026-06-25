@@ -401,72 +401,93 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
   const monthlyGoal = settings.billing?.monthlyGoalOverrides?.[mk] || settings.billing?.monthlyGoal || 395000
   const [yr, mo] = mk.split('-').map(Number)
   const monthLabel = ['January','February','March','April','May','June','July','August','September','October','November','December'][mo-1] + ' ' + yr
+  const subtitle = `${pm==='ALL'?'All PMs':'PM: '+pm} · ${client==='ALL'?'All Clients':client}`
 
   const active = projects.filter(p => !p.archived && (pm==='ALL'||p.pm===pm) && (client==='ALL'||p.client===client))
+
+  // Build PM → Client → [projects] hierarchy
   const pmGroups = {}, pmOrder = []
   active.forEach(p => {
     const phases = p.phases.filter(ph => (ph.monthly?.[mk]||0) > 0)
     if (!phases.length) return
-    if (!pmGroups[p.pm]) { pmGroups[p.pm] = []; pmOrder.push(p.pm) }
-    pmGroups[p.pm].push({ ...p, filteredPhases: phases })
+    const pmKey = p.pm || '—'
+    const clientKey = p._client || p.client || '—'
+    if (!pmGroups[pmKey]) { pmGroups[pmKey] = {}; pmOrder.push(pmKey) }
+    if (!pmGroups[pmKey][clientKey]) pmGroups[pmKey][clientKey] = []
+    pmGroups[pmKey][clientKey].push({ ...p, filteredPhases: phases })
   })
 
-  const grandTotal = pmOrder.reduce((s,k)=>s+pmGroups[k].reduce((s2,p)=>s2+p.filteredPhases.reduce((s3,ph)=>s3+(ph.monthly?.[mk]||0),0),0),0)
-  const CONF_COLORS = { g:'#2d7a3a', y:'#b45309', r:'#c0392b' }
-  const CONF_LABELS = { g:'✓ On track', y:'~ Uncertain', r:'! At risk' }
-  const subtitle = `${pm==='ALL'?'All PMs':'PM: '+pm} · ${client==='ALL'?'All Clients':client}`
+  const grandTotal = pmOrder.reduce((s,k)=>s+Object.values(pmGroups[k]).flat().reduce((s2,p)=>s2+p.filteredPhases.reduce((s3,ph)=>s3+(ph.monthly?.[mk]||0),0),0),0)
 
   const pmBlocks = pmOrder.map(pmKey => {
-    const pList = pmGroups[pmKey]
-    const pmTotal = pList.reduce((s,p)=>s+p.filteredPhases.reduce((s2,ph)=>s2+(ph.monthly?.[mk]||0),0),0)
-    const projRows = pList.map(p => {
-      const projTotal = p.filteredPhases.reduce((s,ph)=>s+(ph.monthly?.[mk]||0),0)
-      const phRows = p.filteredPhases.map((ph,i) => {
-        const phFee = ph.scope==='CA'?(ph.fee||0)*(ph.caMonths||12):(ph.fee||0)
-        const phRem = Math.max(0, phFee - (ph.billed||0))
-        const moAmt = ph.monthly?.[mk]||0
-        const allocPct = phFee>0?Math.round(moAmt/phFee*100):0
-        const conf = ph.billingConf?.[mk]||null
-        return `<tr style="border-bottom:0.5px solid #f0ede6;background:${i%2?'#fafaf8':'#fff'}">
-          <td style="padding:4px 8px 4px 24px;font-size:11px;color:#736F4C">${ph.name||'—'}</td>
-          <td style="padding:4px 8px;font-size:11px;text-align:center;color:#736F4C">${ph.scope||'—'}</td>
-          <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phFee)}</td>
-          <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phRem)}</td>
-          <td style="padding:4px 8px;font-size:11px;text-align:right;font-weight:700;color:#BD6439">${fmt(moAmt)}</td>
-          <td style="padding:4px 8px;font-size:11px;text-align:right">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">
-              <div style="width:36px;height:4px;background:#eceae3;border-radius:2px"><div style="width:${Math.min(100,allocPct)}%;height:100%;background:${allocPct>100?'#c0392b':'#BD6439'};border-radius:2px"></div></div>
-              ${allocPct}%
-            </div>
-          </td>
-          <td style="padding:4px 8px;font-size:11px;text-align:center;color:${conf?CONF_COLORS[conf]:'#ccc'}">${conf?CONF_LABELS[conf]:'—'}</td>
-        </tr>`}).join('')
-      return `<tr style="background:#F5F5F1;border-top:1px solid #dedad0">
-          <td colspan="7" style="padding:5px 8px">
-            <span style="font-weight:700;color:#3D3935">${p.project}</span>
-            <span style="font-size:11px;color:#736F4C;margin-left:8px">${p.client}</span>
-            <span style="font-size:11px;color:#a09c85;margin-left:6px">${p.pm}</span>
-            ${p.projNo?`<span style="font-size:11px;color:#a09c85;margin-left:4px">#${p.projNo}</span>`:''}
+    const clientMap = pmGroups[pmKey]
+    const clientOrder = Object.keys(clientMap)
+    const pmTotal = clientOrder.reduce((s,ck)=>s+clientMap[ck].reduce((s2,p)=>s2+p.filteredPhases.reduce((s3,ph)=>s3+(ph.monthly?.[mk]||0),0),0),0)
+
+    const clientBlocks = clientOrder.map(clientKey => {
+      const pList = clientMap[clientKey]
+      const clientTotal = pList.reduce((s,p)=>s+p.filteredPhases.reduce((s2,ph)=>s2+(ph.monthly?.[mk]||0),0),0)
+
+      const projRows = pList.map(p => {
+        const projTotal = p.filteredPhases.reduce((s,ph)=>s+(ph.monthly?.[mk]||0),0)
+        const phRows = p.filteredPhases.map((ph,i) => {
+          const phFee = ph.scope==='CA'?(ph.fee||0)*(ph.caMonths||12):(ph.fee||0)
+          const phRem = Math.max(0, phFee - (ph.billed||0))
+          const moAmt = ph.monthly?.[mk]||0
+          const allocPct = phFee>0?Math.round(moAmt/phFee*100):0
+          return `<tr style="border-bottom:0.5px solid #f0ede6;background:${i%2?'#fafaf8':'#fff'}">
+            <td style="padding:4px 8px 4px 24px;font-size:11px;color:#736F4C">${ph.name||'—'}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:center;color:#736F4C">${ph.scope||'—'}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phFee)}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phRem)}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:right;font-weight:700;color:#BD6439">${fmt(moAmt)}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:right">
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">
+                <div style="width:36px;height:4px;background:#eceae3;border-radius:2px"><div style="width:${Math.min(100,allocPct)}%;height:100%;background:${allocPct>100?'#c0392b':'#BD6439'};border-radius:2px"></div></div>
+                ${allocPct}%
+              </div>
+            </td>
+          </tr>`}).join('')
+        return `<tr style="background:#F5F5F1;border-top:0.5px solid #dedad0">
+            <td colspan="6" style="padding:5px 8px 5px 16px">
+              <span style="font-weight:700;color:#3D3935">${p.project}</span>
+              ${p.projNo?`<span style="font-size:10px;color:#a09c85;margin-left:6px">#${p.projNo}</span>`:''}
+              <span style="font-size:10px;color:#a09c85;margin-left:6px">${p.pm}</span>
+            </td>
+          </tr>
+          ${phRows}
+          <tr style="background:#fafaf8;border-bottom:0.5px solid #dedad0">
+            <td style="padding:3px 8px;font-size:10px;font-weight:700;color:#736F4C">Project Total</td>
+            <td colspan="3"></td>
+            <td style="padding:3px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(projTotal)}</td>
+            <td></td>
+          </tr>`}).join('')
+
+      return `<tr style="background:rgba(115,111,76,0.1)">
+          <td colspan="6" style="padding:5px 8px 5px 10px;font-weight:700;font-size:11px;color:#736F4C;letter-spacing:.02em">
+            ${clientKey.toUpperCase()}
+            <span style="font-weight:400;font-size:10px;color:#a09c85;margin-left:8px">${pList.length} project${pList.length!==1?'s':''}</span>
           </td>
         </tr>
-        ${phRows}
-        <tr style="background:#fafaf8;border-bottom:1px solid #dedad0">
-          <td style="padding:3px 8px;font-size:10px;font-weight:700;color:#736F4C">Project Total</td>
+        ${projRows}
+        <tr style="background:#ECEAE3;border-bottom:0.5px solid #dedad0">
+          <td style="padding:4px 8px;font-size:10px;font-weight:700;color:#736F4C">Client Total — ${clientKey}</td>
           <td colspan="3"></td>
-          <td style="padding:3px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(projTotal)}</td>
-          <td colspan="2"></td>
+          <td style="padding:4px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(clientTotal)}</td>
+          <td></td>
         </tr>`}).join('')
+
     return `<tr style="background:#3D3935">
-        <td colspan="7" style="padding:7px 8px;font-weight:700;font-size:12px;color:#F5F5F1;font-family:'League Gothic','Nunito Sans',sans-serif;letter-spacing:.03em">
-          PM: ${pmKey.toUpperCase()} — ${pList.length} project${pList.length!==1?'s':''} · ${fmt(pmTotal)}
+        <td colspan="6" style="padding:7px 8px;font-weight:700;font-size:12px;color:#F5F5F1;font-family:'League Gothic','Nunito Sans',sans-serif;letter-spacing:.03em">
+          PM: ${pmKey.toUpperCase()} — ${fmt(pmTotal)}
         </td>
       </tr>
-      ${projRows}
+      ${clientBlocks}
       <tr style="background:#e9e5da;border-bottom:2px solid #3D3935">
         <td style="padding:5px 8px;font-size:11px;font-weight:700">PM Total — ${pmKey}</td>
         <td colspan="3"></td>
         <td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:700;color:#BD6439">${fmt(pmTotal)}</td>
-        <td colspan="2"></td>
+        <td></td>
       </tr>`}).join('')
 
   const vsGoal = grandTotal - monthlyGoal
@@ -480,13 +501,13 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#3D3935;color:#F5F5F1">
-        ${['Project / Phase','Scope','Phase Fee','Remaining',monthLabel.split(' ')[0]+' Alloc','% Alloc','Confidence'].map((h,i)=>`<th style="text-align:${i>=2?'right':i===1?'center':'left'};padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join('')}
+        ${['Project / Phase','Scope','Phase Fee','Remaining',monthLabel.split(' ')[0]+' Alloc','% Alloc'].map((h,i)=>`<th style="text-align:${i>=2?'right':i===1?'center':'left'};padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join('')}
       </tr></thead>
-      <tbody>${pmBlocks||`<tr><td colspan="7" style="padding:20px;text-align:center;color:#a09c85">No allocations for ${monthLabel}</td></tr>`}</tbody>
+      <tbody>${pmBlocks||`<tr><td colspan="6" style="padding:20px;text-align:center;color:#a09c85">No allocations for ${monthLabel}</td></tr>`}</tbody>
       <tfoot><tr style="background:#3D3935;color:#F5F5F1">
         <td colspan="4" style="padding:8px;font-weight:700;font-size:12px">TOTAL</td>
         <td style="padding:8px;text-align:right;font-weight:700;font-size:14px;color:#f8c4a0">${fmt(grandTotal)}</td>
-        <td colspan="2"></td>
+        <td></td>
       </tr></tfoot>
     </table>
     ${reportFooter()}`)
