@@ -100,7 +100,21 @@ export function useAppState() {
     }
   }, [])
 
-  // ── Presence polling ──────────────────────────────────────────────────────
+  // ── Presence heartbeat + polling ───────────────────────────────────────────
+  const STALE_MS = 30000
+
+  const heartbeat = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) return
+      const key = `presence:${user.email}`
+      await supabase.from('app_state').upsert(
+        { key, data: { ts: Date.now() }, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+    } catch {}
+  }, [])
+
   const pollPresence = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -109,17 +123,26 @@ export function useAppState() {
         .from('app_state')
         .select('key,data')
         .like('key', 'presence:%')
+      const now = Date.now()
       const users = (data || [])
         .filter(r => r.key !== `presence:${currentEmail}`)
+        .filter(r => r.data?.ts && (now - r.data.ts) < STALE_MS)
         .map(r => r.key.replace('presence:', ''))
       setPresence(users)
     } catch (err) { }
   }, [])
 
   useEffect(() => {
-    pollTimer.current = setInterval(pollPresence, POLL_INTERVAL)
-    return () => clearInterval(pollTimer.current)
-  }, [pollPresence])
+    heartbeat()
+    pollPresence()
+    pollTimer.current = setInterval(() => { heartbeat(); pollPresence() }, POLL_INTERVAL)
+    return () => {
+      clearInterval(pollTimer.current)
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) supabase.from('app_state').delete().eq('key', `presence:${user.email}`)
+      })
+    }
+  }, [heartbeat, pollPresence])
 
   // ── Mutate helper ─────────────────────────────────────────────────────────
   const mutate = useCallback((updater) => {
