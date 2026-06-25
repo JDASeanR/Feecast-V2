@@ -169,7 +169,6 @@ const CONTENT = {
       <Feature icon="ti-filter" title="Filters">Filter by PM, client, and date range. Project Status report supports sort by PM or Client and hiding done items.</Feature>
       <Feature icon="ti-template" title="Templates">Choose between Letterhead (full branded header) and Minimal (clean, compact) styles for the HTML preview.</Feature>
       <Feature icon="ti-download" title="PDF Export">All four reports export as vector PDFs using react-pdf — sharp at any zoom, proper page breaks, print-ready.</Feature>
-      <Feature icon="ti-mail" title="Email">Send reports via email directly from the app (uses the Resend API).</Feature>
     </Section>
   ),
 
