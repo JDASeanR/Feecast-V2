@@ -277,10 +277,11 @@ module.exports = async function handler(req, res) {
     const emailData = await emailRes.json();
 
     if (!emailRes.ok) {
+      console.error('Resend error:', JSON.stringify(emailData));
       return res.status(500).json({
-        error: emailData?.message || 'Resend error',
+        error: emailData?.message || emailData?.error || JSON.stringify(emailData) || 'Resend error',
         detail: emailData,
-        debug: { from: FROM_EMAIL, to: recipients, keySet: !!RESEND_KEY },
+        debug: { from: FROM_EMAIL, to: recipients, resendStatus: emailRes.status },
       });
     }
 
