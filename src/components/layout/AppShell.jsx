@@ -499,6 +499,7 @@ export default function AppShell({ session, store }) {
         open={chatOpen}
         onClose={() => setChatOpen(false)}
         onUnread={setChatUnread}
+        pms={appState.settings?.pms || []}
       />
     </div>
   )
