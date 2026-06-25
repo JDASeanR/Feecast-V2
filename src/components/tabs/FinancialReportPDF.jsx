@@ -167,33 +167,19 @@ export default function FinancialReportPDF({ appState, pm, client, fromMk, toMk,
     <Document>
       <Page size="A4" style={S.page}>
 
-        {/* Header */}
-        <View style={S.headerRow}>
-          <View style={S.headerLeft}>
-            {useLogo
-              ? <Image src={useLogo} style={S.logo} />
-              : null
-            }
-            <View>
-              <Text style={S.firmName}>{firmName.toUpperCase()}</Text>
-              <Text style={S.firmSub}>ARCHITECTS · PLANNERS</Text>
-            </View>
-          </View>
-          <View style={S.headerRight}>
-            <Text style={S.headerDate}>{dt}</Text>
-            <Text style={S.headerConfidential}>CONFIDENTIAL</Text>
-          </View>
-        </View>
-
-        {/* Title */}
+        {/* Unified banner */}
         <View style={S.titleBlock}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 7, color: 'rgba(245,245,241,0.4)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>{firmName.toUpperCase()} · ARCHITECTS · PLANNERS</Text>
               <View style={S.titleAccent} />
               <Text style={S.title}>Firm Financial Summary</Text>
               <Text style={S.subtitle}>{subtitle}</Text>
             </View>
-            {useLogo && <Image src={useLogo} style={{ width: 44, height: 44, borderRadius: 4, opacity: 0.85 }} />}
+            <View style={{ alignItems: 'flex-end' }}>
+              {useLogo && <Image src={useLogo} style={{ width: 44, height: 44, borderRadius: 4, opacity: 0.85, marginBottom: 6 }} />}
+              <Text style={{ fontSize: 7, color: 'rgba(245,245,241,0.4)', textAlign: 'right' }}>{dt} · CONFIDENTIAL</Text>
+            </View>
           </View>
         </View>
 

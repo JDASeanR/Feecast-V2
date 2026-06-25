@@ -79,22 +79,7 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
     <Document>
       <Page size="A4" style={S.page} wrap>
 
-        {/* Header */}
-        <View style={S.headerRow} fixed>
-          <View style={S.headerLeft}>
-            {useLogo ? <Image src={useLogo} style={S.logo} /> : null}
-            <View>
-              <Text style={S.firmName}>{firmName.toUpperCase()}</Text>
-              <Text style={S.firmSub}>ARCHITECTS · PLANNERS</Text>
-            </View>
-          </View>
-          <View style={S.headerRight}>
-            <Text style={S.headerDate}>{dt}</Text>
-            <Text style={S.headerConfidential}>CONFIDENTIAL</Text>
-          </View>
-        </View>
-
-        {/* Title banner — graphite */}
+        {/* Unified banner */}
         <View style={S.titleBlock}>
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start' }}>
             <View style={{ flex:1 }}>
