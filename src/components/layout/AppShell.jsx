@@ -278,16 +278,16 @@ export default function AppShell({ session, store }) {
 
       {/* Header — Graphite surface */}
       <header style={{ background: '#3D3935', color: '#F5F5F1' }}
-        className="px-4 py-2 flex items-center gap-2 shrink-0">
+        className="px-5 py-3 flex items-center gap-3 shrink-0">
 
         {/* Logo */}
         {appState?.settings?.firm?.logo && (
           <img src={appState.settings.firm.logo} alt="firm logo"
-            style={{ height:28, maxWidth:80, objectFit:"contain", marginRight:4, opacity:0.92 }} />
+            style={{ height:36, maxWidth:100, objectFit:"contain", marginRight:6, opacity:0.92 }} />
         )}
 
         {/* Wordmark */}
-        <div className="font-display tracking-display mr-3" style={{ fontSize: 22, letterSpacing: '0.02em' }}>
+        <div className="font-display tracking-display mr-4" style={{ fontSize: 28, letterSpacing: '0.02em' }}>
           FEE<span style={{ color: '#BD6439' }}>CAST</span>
         </div>
 
@@ -314,7 +314,7 @@ export default function AppShell({ session, store }) {
           </span>
         )}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-2">
           {/* Header buttons — ghost style on dark surface */}
           {[
             { label: 'Save', icon: 'ti-device-floppy', onClick: () => store.save(appState), disabled: saveStatus === 'saving' },
@@ -322,35 +322,35 @@ export default function AppShell({ session, store }) {
             { label: 'Help', icon: 'ti-help-circle', onClick: () => setGuideOpen(true) },
           ].map(({ label, icon, onClick, disabled }) => (
             <button key={label} onClick={onClick} disabled={disabled}
-              className="inline-flex items-center gap-1 px-2.5 py-1 font-display tracking-ui uppercase transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 font-display tracking-ui uppercase transition-colors cursor-pointer"
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 background: 'transparent',
                 color: '#F5F5F1',
                 border: '0.5px solid rgba(245,245,241,0.25)',
-                borderRadius: 4,
+                borderRadius: 5,
                 opacity: disabled ? 0.5 : 1,
               }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.6)'}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.25)'}
             >
-              <i className={`ti ${icon}`} style={{ fontSize: 13 }} /> {label}
+              <i className={`ti ${icon}`} style={{ fontSize: 15 }} /> {label}
             </button>
           ))}
 
           {/* Presence badges */}
           {presence.filter(u => u !== session.user.email).map((email, i) => (
             <div key={email} title={email}
-              className="w-8 h-8 rounded-full flex items-center justify-center font-display shrink-0"
-              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], color: '#F5F5F1', fontSize: 11 }}>
+              className="w-9 h-9 rounded-full flex items-center justify-center font-display shrink-0"
+              style={{ background: BADGE_COLORS[i % BADGE_COLORS.length], color: '#F5F5F1', fontSize: 13 }}>
               {initials(email)}
             </div>
           ))}
 
           {/* Current user */}
           <div title={session.user.email}
-            className="w-8 h-8 rounded-full flex items-center justify-center font-display shrink-0"
-            style={{ background: '#3D3935', color: '#F5F5F1', fontSize: 11, border: '1.5px solid #BD6439' }}>
+            className="w-9 h-9 rounded-full flex items-center justify-center font-display shrink-0"
+            style={{ background: '#3D3935', color: '#F5F5F1', fontSize: 13, border: '2px solid #BD6439' }}>
             {initials(session.user.email)}
           </div>
 
@@ -358,7 +358,7 @@ export default function AppShell({ session, store }) {
           <button onClick={handleLogout}
             className="inline-flex items-center px-2 py-1 transition-colors cursor-pointer"
             style={{
-              fontSize: 12,
+              fontSize: 15,
               background: 'transparent',
               color: 'rgba(245,245,241,0.5)',
               border: 'none',
