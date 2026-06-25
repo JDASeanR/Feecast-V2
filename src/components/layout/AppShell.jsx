@@ -318,8 +318,6 @@ export default function AppShell({ session, store }) {
           {/* Header buttons — ghost style on dark surface */}
           {[
             { label: 'Save', icon: 'ti-device-floppy', onClick: () => store.save(appState), disabled: saveStatus === 'saving' },
-            { label: syncing ? 'Syncing…' : 'Sync', icon: syncing ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSync, disabled: syncing },
-            { label: syncingAR ? 'Syncing…' : 'Sync A/R', icon: syncingAR ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSyncAR, disabled: syncingAR },
             { label: 'Settings', icon: 'ti-settings', onClick: () => setSettingsOpen(true) },
             { label: 'Help', icon: 'ti-help-circle', onClick: () => setGuideOpen(true) },
           ].map(({ label, icon, onClick, disabled }) => (
@@ -471,6 +469,11 @@ export default function AppShell({ session, store }) {
           appState={appState}
           mutate={mutate}
           onClose={() => setSettingsOpen(false)}
+          doSync={doSync}
+          doSyncAR={doSyncAR}
+          syncing={syncing}
+          syncingAR={syncingAR}
+          syncMsg={syncMsg}
         />
       )}
       {guideOpen && <UserGuide onClose={() => setGuideOpen(false)} />}

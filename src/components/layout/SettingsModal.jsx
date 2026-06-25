@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { id: 'advanced',      icon: 'ti-tools',        label: 'Advanced' },
 ]
 
-export default function SettingsModal({ appState, mutate, onClose }) {
+export default function SettingsModal({ appState, mutate, onClose, doSync, doSyncAR, syncing, syncingAR, syncMsg }) {
   const { settings } = appState
   const [section, setSection] = useState('pms')
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(settings)))
@@ -530,6 +530,21 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                       <span className="text-2xs text-dark-3">{item.desc}</span>
                     </div>
                   ))}
+                  <div className="pt-4 mt-4 border-t border-sand-2">
+                    <div className="font-semibold text-xs mb-1">Smartsheet Sync</div>
+                    <div className="text-2xs text-dark-3 mb-3">Pull project and A/R data from Smartsheet. This will overwrite current data — use with caution.</div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button onClick={doSync} disabled={syncing}
+                        className="btn btn-sm text-warning border-warning/30" style={{ opacity: syncing ? 0.5 : 1 }}>
+                        <i className={clsx('ti', syncing ? 'ti-loader-2 spin' : 'ti-refresh')} /> {syncing ? 'Syncing…' : 'Sync Projects'}
+                      </button>
+                      <button onClick={doSyncAR} disabled={syncingAR}
+                        className="btn btn-sm text-warning border-warning/30" style={{ opacity: syncingAR ? 0.5 : 1 }}>
+                        <i className={clsx('ti', syncingAR ? 'ti-loader-2 spin' : 'ti-refresh')} /> {syncingAR ? 'Syncing…' : 'Sync A/R'}
+                      </button>
+                      {syncMsg && <span className={clsx('text-2xs', syncMsg.startsWith('✓') ? 'text-success' : 'text-flag')}>{syncMsg}</span>}
+                    </div>
+                  </div>
                 </div>
               </Section>
             )}
