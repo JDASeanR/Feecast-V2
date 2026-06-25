@@ -932,12 +932,12 @@ function FlagPopup({ isProject, onSave, onClose }) {
 
   return (
     <>
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={onClose} />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(61,57,53,0.4)' }} onClick={onClose} />
     <div ref={ref} style={{
       position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 9999,
-      background: '#fff', border: '1px solid rgba(61,57,53,0.2)',
-      borderRadius: 8, padding: 20, width: 320,
-      boxShadow: '0 16px 48px rgba(61,57,53,0.3)',
+      background: '#ffffff', border: '1px solid rgba(61,57,53,0.15)',
+      borderRadius: 8, padding: 24, width: 340,
+      boxShadow: '0 20px 60px rgba(61,57,53,0.35)',
     }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: '#3D3935', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
         <i className="ti ti-flag-filled" style={{ color: '#c0392b', fontSize: 14 }} />
