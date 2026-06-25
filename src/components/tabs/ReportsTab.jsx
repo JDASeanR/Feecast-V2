@@ -64,27 +64,18 @@ function reportHeader(title, subtitle, template, logo) {
       <div style="font-size:11px;color:#a09c85">${dt}</div>
     </div>`
   return `
-    <div style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:0.5px solid #dedad0">
-        <div style="display:flex;align-items:center;gap:12px">
-          ${logo ? `<img src="${logo}" style="height:44px;max-width:120px;object-fit:contain;border-radius:3px">` : `<img src="${JDA_LOGO}" style="height:44px;width:44px;border-radius:5px">`}
-          <div>
-            <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:13px;letter-spacing:.06em;color:#3D3935">JEFFREY DeMURE + ASSOCIATES</div>
-            <div style="font-size:10px;color:#736F4C;letter-spacing:.1em;text-transform:uppercase">Architects · Planners</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:11px;color:#a09c85">${dt}</div>
-          <div style="font-size:10px;color:#a09c85;margin-top:1px">CONFIDENTIAL</div>
-        </div>
-      </div>
-      <div style="background:#3D3935;border-radius:6px;padding:16px 20px;margin-top:12px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
-        <div>
+    <div style="background:#3D3935;border-radius:6px;padding:18px 20px;margin-bottom:20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div style="flex:1">
+          <div style="font-size:10px;color:rgba(245,245,241,0.4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">JEFFREY DeMURE + ASSOCIATES · ARCHITECTS · PLANNERS</div>
           <div style="width:28px;height:3px;background:#BD6439;border-radius:2px;margin-bottom:8px"></div>
-          <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:26px;letter-spacing:.04em;color:#F5F5F1">${title}</div>
+          <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:28px;letter-spacing:.04em;color:#F5F5F1">${title}</div>
           ${subtitle?`<div style="font-size:12px;color:rgba(245,245,241,0.55);margin-top:4px">${subtitle}</div>`:''}
         </div>
-        ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;margin-left:16px">
+          ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
+          <div style="font-size:10px;color:rgba(245,245,241,0.4);text-align:right">${dt} · CONFIDENTIAL</div>
+        </div>
       </div>
     </div>`
 }
