@@ -75,14 +75,15 @@ export default function BillingTab({ appState, mutate, session }) {
   const visMonths = showPast ? ALL_MONTHS : ALL_MONTHS.filter(m => !m.isPast)
 
   // ── Prep projects ─────────────────────────────────────────────────────────
-  const resolvedProjects = projects
+  const allResolved = projects
     .filter(p => !p.archived)
     .map((p, i) => ({ ...p, _client: resolveClient(p.client, projects, i) }))
     .filter(p => filterPM === 'ALL' || p.pm === filterPM)
-    .filter(p => {
-      if (!hideBilledOut) return true
-      return p.phases.some(ph => phRem(ph) > 0)
-    })
+
+  const resolvedProjects = allResolved.filter(p => {
+    if (!hideBilledOut) return true
+    return p.phases.some(ph => phRem(ph) > 0)
+  })
 
   // ── Group PM → Client → Project ──────────────────────────────────────────
   const pmGroups = {}
@@ -97,11 +98,11 @@ export default function BillingTab({ appState, mutate, session }) {
 
   // ── Column totals ─────────────────────────────────────────────────────────
   const ffTots = visMonths.map(m =>
-    resolvedProjects.reduce((s, p) =>
+    allResolved.reduce((s, p) =>
       s + p.phases.reduce((ps, ph) => ps + (ph.monthly?.[m.key] || 0), 0), 0)
   )
 
-  const grandFee = resolvedProjects.reduce((s, p) =>
+  const grandFee = allResolved.reduce((s, p) =>
     s + p.phases.reduce((ps, ph) => ps + phFeeFC(ph), 0), 0)
 
   // ── Mutate helpers ────────────────────────────────────────────────────────
