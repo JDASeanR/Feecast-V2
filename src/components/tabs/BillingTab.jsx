@@ -64,6 +64,23 @@ export default function BillingTab({ appState, mutate, session }) {
   const monthlyGoal = settings.billing?.monthlyGoal || 395000
   const hourlyData  = settings.billing?.hourlyByMonth || {}
 
+  // ── Migrate null-id phases once on mount ─────────────────────────────────
+  useEffect(() => {
+    const hasNulls = appState.projects.some(p => p.phases.some(ph => ph.id == null))
+    if (!hasNulls) return
+    mutate(prev => {
+      let nextId = prev.nextId || 9000
+      return {
+        ...prev,
+        projects: prev.projects.map(p => ({
+          ...p,
+          phases: p.phases.map(ph => ph.id != null ? ph : { ...ph, id: nextId++ })
+        })),
+        nextId,
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Local UI state ────────────────────────────────────────────────────────
   const [filterPM,       setFilterPM]       = useLocalPref('bill.filterPM', 'ALL')
   const [showPast,       setShowPast]        = useLocalPref('bill.showPast', false)
@@ -111,7 +128,7 @@ export default function BillingTab({ appState, mutate, session }) {
       const next = { ...prev, projects: prev.projects.map(p => {
         if (p.id !== projId) return p
         return { ...p, phases: p.phases.map(ph => {
-          if (ph.id == null || ph.id !== phId) return ph
+          if (ph.id !== phId) return ph
           const fee     = phFeeFC(ph)
           const dollars = Math.round(fee * (pct / 100))
           return { ...ph, monthly: { ...ph.monthly, [mk]: dollars } }
