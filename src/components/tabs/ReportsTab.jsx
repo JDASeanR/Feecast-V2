@@ -435,42 +435,42 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
           const phRem = Math.max(0, phFee - (ph.billed||0))
           const moAmt = ph.monthly?.[mk]||0
           const allocPct = phFee>0?Math.round(moAmt/phFee*100):0
-          return `<tr style="border-bottom:0.5px solid #f0ede6;background:${i%2?'#fafaf8':'#fff'}">
-            <td style="padding:4px 8px 4px 24px;font-size:11px;color:#736F4C">${ph.name||'—'}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:center;color:#736F4C">${ph.scope||'—'}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phFee)}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phRem)}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:right;font-weight:700;color:#BD6439">${fmt(moAmt)}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:right">
+          return `<tr style="border-bottom:1px solid #ECEAE3;background:${i%2?'#F5F5F1':'#ffffff'}">
+            <td style="padding:5px 8px 5px 24px;font-size:11px;color:#736F4C">${ph.name||'—'}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:center;color:#736F4C">${ph.scope||'—'}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phFee)}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#736F4C">${fmt(phRem)}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:700;color:#BD6439">${fmt(moAmt)}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right">
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px">
                 <div style="width:36px;height:4px;background:#eceae3;border-radius:2px"><div style="width:${Math.min(100,allocPct)}%;height:100%;background:${allocPct>100?'#c0392b':'#BD6439'};border-radius:2px"></div></div>
                 ${allocPct}%
               </div>
             </td>
           </tr>`}).join('')
-        return `<tr style="background:#F5F5F1;border-top:0.5px solid #dedad0">
-            <td colspan="6" style="padding:5px 8px 5px 16px">
+        return `<tr style="background:#ECEAE3;border-top:1px solid #dedad0">
+            <td colspan="6" style="padding:6px 8px 6px 16px">
               <span style="font-weight:700;color:#3D3935">${p.project}</span>
               ${p.projNo?`<span style="font-size:10px;color:#a09c85;margin-left:6px">#${p.projNo}</span>`:''}
               <span style="font-size:10px;color:#a09c85;margin-left:6px">${p.pm}</span>
             </td>
           </tr>
           ${phRows}
-          <tr style="background:#fafaf8;border-bottom:0.5px solid #dedad0">
-            <td style="padding:3px 8px;font-size:10px;font-weight:700;color:#736F4C">Project Total</td>
+          <tr style="background:#e9e5da;border-bottom:1px solid #dedad0">
+            <td style="padding:4px 8px;font-size:10px;font-weight:700;color:#736F4C">Project Total</td>
             <td colspan="3"></td>
-            <td style="padding:3px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(projTotal)}</td>
+            <td style="padding:4px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(projTotal)}</td>
             <td></td>
           </tr>`}).join('')
 
-      return `<tr style="background:rgba(115,111,76,0.1)">
-          <td colspan="6" style="padding:5px 8px 5px 10px;font-weight:700;font-size:11px;color:#736F4C;letter-spacing:.02em">
-            ${clientKey.toUpperCase()}
-            <span style="font-weight:400;font-size:10px;color:#a09c85;margin-left:8px">${pList.length} project${pList.length!==1?'s':''}</span>
+      return `<tr style="background:#736F4C">
+          <td colspan="6" style="padding:6px 8px;font-weight:700;font-size:11px;color:#F5F5F1;letter-spacing:.04em;text-transform:uppercase">
+            ${clientKey}
+            <span style="font-weight:400;font-size:10px;color:rgba(245,245,241,0.6);margin-left:8px">${pList.length} project${pList.length!==1?'s':''}</span>
           </td>
         </tr>
         ${projRows}
-        <tr style="background:#ECEAE3;border-bottom:0.5px solid #dedad0">
+        <tr style="background:#ECEAE3;border-bottom:2px solid #736F4C">
           <td style="padding:4px 8px;font-size:10px;font-weight:700;color:#736F4C">Client Total — ${clientKey}</td>
           <td colspan="3"></td>
           <td style="padding:4px 8px;text-align:right;font-size:11px;font-weight:700;color:#BD6439">${fmt(clientTotal)}</td>
@@ -478,21 +478,26 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
         </tr>`}).join('')
 
     return `<tr style="background:#3D3935">
-        <td colspan="6" style="padding:7px 8px;font-weight:700;font-size:12px;color:#F5F5F1;font-family:'League Gothic','Nunito Sans',sans-serif;letter-spacing:.03em">
-          PM: ${pmKey.toUpperCase()} — ${fmt(pmTotal)}
+        <td colspan="6" style="padding:8px;font-weight:700;font-size:13px;color:#F5F5F1;font-family:'League Gothic','Nunito Sans',sans-serif;letter-spacing:.04em">
+          PM: ${pmKey.toUpperCase()} <span style="color:#BD6439;margin-left:12px">${fmt(pmTotal)}</span>
         </td>
       </tr>
       ${clientBlocks}
-      <tr style="background:#e9e5da;border-bottom:2px solid #3D3935">
-        <td style="padding:5px 8px;font-size:11px;font-weight:700">PM Total — ${pmKey}</td>
-        <td colspan="3"></td>
-        <td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:700;color:#BD6439">${fmt(pmTotal)}</td>
-        <td></td>
-      </tr>`}).join('')
+      <tr><td colspan="6" style="height:10px;background:#fff"></td></tr>`}).join('')
 
   const vsGoal = grandTotal - monthlyGoal
+  const logo = appState.settings?.firm?.logo
+  const graphiteHeader = `
+    <div style="background:#3D3935;border-radius:6px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="width:28px;height:3px;background:#BD6439;border-radius:2px;margin-bottom:8px"></div>
+        <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:26px;letter-spacing:.04em;color:#F5F5F1">Monthly Billing Report</div>
+        <div style="font-size:12px;color:rgba(245,245,241,0.55);margin-top:4px">${monthLabel} · ${subtitle}</div>
+      </div>
+      ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
+    </div>`
   return PAGE_WRAP(`
-    ${reportHeader('Monthly Billing Report',`${monthLabel} · ${subtitle}`,template,appState.settings?.firm?.logo)}
+    ${graphiteHeader}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
       ${kpiCard('Total Allocated',fmt(grandTotal),'#BD6439')}
       ${kpiCard('Monthly Goal',fmt(monthlyGoal),'#3D3935')}

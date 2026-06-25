@@ -10,9 +10,10 @@ const S = StyleSheet.create({
   headerRight: { alignItems:'flex-end' },
   headerDate: { fontSize:8, color:'#a09c85' },
   headerConfidential: { fontSize:7, color:'#a09c85', marginTop:2, letterSpacing:0.5 },
-  titleBlock: { marginTop:12, paddingBottom:10, borderBottomWidth:3, borderBottomColor:'#BD6439', marginBottom:16 },
-  title: { fontSize:20, fontFamily:'Helvetica-Bold', color:'#3D3935', letterSpacing:0.5 },
-  subtitle: { fontSize:9, color:'#736F4C', marginTop:3 },
+  titleBlock: { backgroundColor:'#3D3935', borderRadius:4, padding:'14px 16px', marginTop:12, marginBottom:16 },
+  title: { fontSize:22, fontFamily:'Helvetica-Bold', color:'#F5F5F1', letterSpacing:0.5 },
+  subtitle: { fontSize:9, color:'rgba(245,245,241,0.6)', marginTop:4 },
+  titleAccent: { width:32, height:3, backgroundColor:'#BD6439', borderRadius:1.5, marginBottom:8 },
   kpiRow: { flexDirection:'row', gap:8, marginBottom:16 },
   kpiCard: { flex:1, backgroundColor:'#F5F5F1', borderRadius:5, padding:10, borderTopWidth:3 },
   kpiLabel: { fontSize:7, color:'#736F4C', textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 },
@@ -20,12 +21,11 @@ const S = StyleSheet.create({
   tableHead: { flexDirection:'row', backgroundColor:'#3D3935', paddingVertical:5, paddingHorizontal:8, borderRadius:3, marginBottom:1 },
   tableHeadCell: { fontSize:7, color:'#F5F5F1', fontFamily:'Helvetica-Bold', textTransform:'uppercase', letterSpacing:0.5 },
   pmHeader: { flexDirection:'row', backgroundColor:'#3D3935', paddingVertical:6, paddingHorizontal:8 },
-  clientHeader: { flexDirection:'row', backgroundColor:'rgba(115,111,76,0.12)', paddingVertical:4, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.1)' },
-  projectBanner: { backgroundColor:'#F5F5F1', paddingVertical:4, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'#dedad0' },
-  phaseRow: { flexDirection:'row', paddingVertical:4, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.06)', alignItems:'center' },
-  phaseRowAlt: { flexDirection:'row', paddingVertical:4, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.06)', backgroundColor:'rgba(236,234,227,0.35)', alignItems:'center' },
-  clientTotalRow: { flexDirection:'row', paddingVertical:3, paddingHorizontal:8, backgroundColor:'#ECEAE3', borderBottomWidth:0.5, borderBottomColor:'#dedad0' },
-  pmTotalRow: { flexDirection:'row', paddingVertical:5, paddingHorizontal:8, backgroundColor:'#e9e5da', borderBottomWidth:1, borderBottomColor:'#3D3935', marginBottom:10 },
+  clientHeader: { flexDirection:'row', backgroundColor:'#736F4C', paddingVertical:4, paddingHorizontal:8 },
+  projectBanner: { backgroundColor:'#ECEAE3', paddingVertical:5, paddingHorizontal:8, borderBottomWidth:1, borderBottomColor:'#dedad0' },
+  phaseRow: { flexDirection:'row', paddingVertical:5, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.1)', alignItems:'center', backgroundColor:'#ffffff' },
+  phaseRowAlt: { flexDirection:'row', paddingVertical:5, paddingHorizontal:8, borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.1)', backgroundColor:'#F5F5F1', alignItems:'center' },
+  clientTotalRow: { flexDirection:'row', paddingVertical:4, paddingHorizontal:8, backgroundColor:'#ECEAE3', borderBottomWidth:1, borderBottomColor:'#736F4C' },
   grandTotalRow: { flexDirection:'row', paddingVertical:7, paddingHorizontal:8, backgroundColor:'#3D3935', marginTop:4 },
   footer: { position:'absolute', bottom:20, left:36, right:36, flexDirection:'row', justifyContent:'space-between', borderTopWidth:0.5, borderTopColor:'#dedad0', paddingTop:6 },
   footerText: { fontSize:7, color:'#a09c85' },
@@ -94,10 +94,16 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
           </View>
         </View>
 
-        {/* Title */}
+        {/* Title banner — graphite */}
         <View style={S.titleBlock}>
-          <Text style={S.title}>Monthly Billing Report</Text>
-          <Text style={S.subtitle}>{monthLabel} · {subtitle}</Text>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <View style={{ flex:1 }}>
+              <View style={S.titleAccent} />
+              <Text style={S.title}>Monthly Billing Report</Text>
+              <Text style={S.subtitle}>{monthLabel} · {subtitle}</Text>
+            </View>
+            {useLogo && <Image src={useLogo} style={{ width:44, height:44, borderRadius:4, opacity:0.85 }} />}
+          </View>
         </View>
 
         {/* KPIs */}
@@ -159,10 +165,10 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
                   <View key={clientKey}>
                     {/* Client header */}
                     <View style={S.clientHeader}>
-                      <Text style={{ flex:1, fontSize:8, fontFamily:'Helvetica-Bold', color:'#736F4C', letterSpacing:0.3 }}>
+                      <Text style={{ flex:1, fontSize:8, fontFamily:'Helvetica-Bold', color:'#F5F5F1', letterSpacing:0.5 }}>
                         {clientKey.toUpperCase()}
                       </Text>
-                      <Text style={{ fontSize:8, color:'#736F4C' }}>{pList.length} project{pList.length !== 1 ? 's' : ''}</Text>
+                      <Text style={{ fontSize:8, color:'rgba(245,245,241,0.65)' }}>{pList.length} project{pList.length !== 1 ? 's' : ''}</Text>
                     </View>
 
                     {/* Projects */}
@@ -224,11 +230,8 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
                 )
               })}
 
-              {/* PM total */}
-              <View style={S.pmTotalRow}>
-                <Text style={{ flex:1, fontSize:8, fontFamily:'Helvetica-Bold', color:'#3D3935' }}>PM Total — {pmKey}</Text>
-                <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:'#BD6439' }}>{fmt(pmTotal)}</Text>
-              </View>
+              {/* PM spacer */}
+              <View style={{ height:10 }} />
             </View>
           )
         })}
