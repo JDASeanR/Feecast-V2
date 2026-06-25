@@ -15,6 +15,7 @@ import SummaryTab from '../tabs/SummaryTab.jsx'
 import ReportsTab from '../tabs/ReportsTab.jsx'
 import WidgetsTab from '../tabs/WidgetsTab.jsx'
 import UserGuide from './UserGuide.jsx'
+import ChatDrawer from './ChatDrawer.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -196,6 +197,8 @@ export default function AppShell({ session, store }) {
   const [tabOrder, setTabOrder] = useLocalPref('tabOrder', TABS.map(t => t.id))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatUnread, setChatUnread] = useState(0)
   const [dragTab, setDragTab] = useState(null)
 
   const orderedTabs = tabOrder
@@ -320,11 +323,12 @@ export default function AppShell({ session, store }) {
             { label: 'Save', icon: 'ti-device-floppy', onClick: () => store.save(appState), disabled: saveStatus === 'saving' },
             { label: 'Settings', icon: 'ti-settings', onClick: () => setSettingsOpen(true) },
             { label: 'Help', icon: 'ti-help-circle', onClick: () => setGuideOpen(true) },
-          ].map(({ label, icon, onClick, disabled }) => (
+            { label: 'Chat', icon: 'ti-message-circle', onClick: () => { setChatOpen(true); setChatUnread(0) }, badge: chatUnread },
+          ].map(({ label, icon, onClick, disabled, badge }) => (
             <button key={label} onClick={onClick} disabled={disabled}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 font-display tracking-ui uppercase transition-colors cursor-pointer"
               style={{
-                fontSize: 12,
+                fontSize: 12, position: 'relative',
                 background: 'transparent',
                 color: '#F5F5F1',
                 border: '0.5px solid rgba(245,245,241,0.25)',
@@ -335,6 +339,17 @@ export default function AppShell({ session, store }) {
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.25)'}
             >
               <i className={`ti ${icon}`} style={{ fontSize: 15 }} /> {label}
+              {badge > 0 && (
+                <span style={{
+                  position:'absolute', top:-6, right:-6,
+                  background:'#BD6439', color:'#fff',
+                  borderRadius:'50%', width:18, height:18,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:10, fontFamily:'inherit', fontWeight:700,
+                }}>
+                  {badge > 9 ? '9+' : badge}
+                </span>
+              )}
             </button>
           ))}
 
@@ -479,6 +494,12 @@ export default function AppShell({ session, store }) {
         />
       )}
       {guideOpen && <UserGuide onClose={() => setGuideOpen(false)} />}
+      <ChatDrawer
+        session={session}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onUnread={setChatUnread}
+      />
     </div>
   )
 }
