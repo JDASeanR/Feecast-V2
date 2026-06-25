@@ -28,7 +28,7 @@ const phVal   = ph => {
 const HOLD_LABELS = { 'not-authorized': 'Not Authorized', 'awaiting-approval': 'Awaiting Approval' }
 const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-clock' }
 
-export default function AllocationWarningsTab({ appState }) {
+export default function AllocationWarningsTab({ appState, onNavigate }) {
   const { projects } = appState
 
   const warnings = []
@@ -45,11 +45,27 @@ export default function AllocationWarningsTab({ appState }) {
       }
       const v = phVal(ph)
       if (v) warnings.push({
-        projId: p.id, pm: p.pm, project: p.project, phase: ph.name,
+        projId: p.id, pm: p.pm, client: p._client || p.client || '—',
+        project: p.project, phase: ph.name,
         issue: v, rem: phRem(ph), alloc: phAlloc(ph), fee: phFeeFC(ph)
       })
     })
   })
+
+  const goFix = (w) => {
+    const pmKey = 'pm-' + w.pm
+    const clientKey = `client-${w.pm}-${w.client}`
+    try {
+      const expPM = JSON.parse(localStorage.getItem('fc_bill.expPM') || '{}')
+      expPM[pmKey] = true
+      localStorage.setItem('fc_bill.expPM', JSON.stringify(expPM))
+      const expClient = JSON.parse(localStorage.getItem('fc_bill.expClient') || '{}')
+      expClient[clientKey] = true
+      localStorage.setItem('fc_bill.expClient', JSON.stringify(expClient))
+      localStorage.setItem('fc_bill.showPhases', 'true')
+    } catch {}
+    if (onNavigate) onNavigate('billing')
+  }
 
   if (!warnings.length && !held.length) {
     return (
@@ -87,6 +103,7 @@ export default function AllocationWarningsTab({ appState }) {
                 <th style={{ width: 80 }}>Allocated</th>
                 <th style={{ width: 80 }}>Gap</th>
                 <th style={{ width: 100 }}>Issue</th>
+                <th style={{ width: 60 }} />
               </tr>
             </thead>
             <tbody>
@@ -110,6 +127,13 @@ export default function AllocationWarningsTab({ appState }) {
                       )}>
                         {isOver ? 'Over-allocated' : 'Under-allocated'}
                       </span>
+                    </td>
+                    <td className="px-2">
+                      <button onClick={() => goFix(w)}
+                        className="btn btn-sm text-xs text-terracotta border-terracotta/30 hover:bg-terracotta/10"
+                        style={{ whiteSpace: 'nowrap' }}>
+                        <i className="ti ti-pencil" style={{ fontSize: 12 }} /> Fix
+                      </button>
                     </td>
                   </tr>
                 )

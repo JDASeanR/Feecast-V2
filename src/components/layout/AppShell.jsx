@@ -450,7 +450,7 @@ export default function AppShell({ session, store }) {
           : activeTab === 'followup'
           ? <FollowUpTab appState={appState} mutate={store.mutate} />
           : activeTab === 'warnings'
-          ? <AllocationWarningsTab appState={appState} />
+          ? <AllocationWarningsTab appState={appState} onNavigate={setActiveTab} />
           : activeTab === 'reports'
           ? <ReportsTab appState={appState} />
           : activeTab === 'widgets'
