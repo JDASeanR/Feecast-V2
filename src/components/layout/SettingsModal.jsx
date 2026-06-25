@@ -180,13 +180,19 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                   <div>
                     <label className="field-label">Annual Goal ($)</label>
                     <input type="number" value={local.billing?.annualGoal||4740000} step={10000}
-                      onChange={e=>set('billing',{...local.billing,annualGoal:parseFloat(e.target.value)||0})}
+                      onChange={e=>{
+                        const annual = parseFloat(e.target.value)||0
+                        set('billing',{...local.billing, annualGoal: annual, monthlyGoal: Math.round(annual/12)})
+                      }}
                       className="input text-xs w-full" />
                   </div>
                   <div>
                     <label className="field-label">Monthly Goal ($)</label>
                     <input type="number" value={local.billing?.monthlyGoal||395000} step={5000}
-                      onChange={e=>set('billing',{...local.billing,monthlyGoal:parseFloat(e.target.value)||0})}
+                      onChange={e=>{
+                        const monthly = parseFloat(e.target.value)||0
+                        set('billing',{...local.billing, monthlyGoal: monthly, annualGoal: Math.round(monthly*12)})
+                      }}
                       className="input text-xs w-full" />
                     <div className="text-2xs text-dark-3 mt-1">Used for billing progress bars and reports</div>
                   </div>
