@@ -139,9 +139,6 @@ export default function ProjectsTab({ appState, mutate }) {
     mutate(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== projId) }))
   }, [mutate])
 
-  const toggleFlag = useCallback(projId => {
-    mutate(prev => ({ ...prev, projects: prev.projects.map(p => p.id === projId ? { ...p, flag: !p.flag } : p) }))
-  }, [mutate])
 
   const toggleArchive = useCallback(projId => {
     mutate(prev => ({ ...prev, projects: prev.projects.map(p => p.id === projId ? { ...p, archived: !p.archived } : p) }))
@@ -150,12 +147,6 @@ export default function ProjectsTab({ appState, mutate }) {
   const togglePhaseDone = useCallback((projId, phId) => {
     mutate(prev => ({ ...prev, projects: prev.projects.map(p => p.id !== projId ? p : {
       ...p, phases: p.phases.map(ph => ph.id !== phId ? ph : { ...ph, done: !ph.done })
-    })}))
-  }, [mutate])
-
-  const togglePhaseFlag = useCallback((projId, phId) => {
-    mutate(prev => ({ ...prev, projects: prev.projects.map(p => p.id !== projId ? p : {
-      ...p, phases: p.phases.map(ph => ph.id !== phId ? ph : { ...ph, flag: !ph.flag })
     })}))
   }, [mutate])
 
@@ -317,10 +308,8 @@ export default function ProjectsTab({ appState, mutate }) {
                         hideDonePhases={hideDonePhases}
                         onEdit={() => setEditingProject(p)}
                         onDelete={() => deleteProject(p.id)}
-                        onFlag={() => toggleFlag(p.id)}
                         onArchive={() => toggleArchive(p.id)}
                         onPhaseDone={(phId) => togglePhaseDone(p.id, phId)}
-                        onPhaseFlag={(phId) => togglePhaseFlag(p.id, phId)}
                         onOpenAlloc={(ph) => setAllocModal({ project: p, phase: ph })}
                         onAddPhase={() => setEditingProject(p)}
                       />
@@ -400,7 +389,7 @@ export default function ProjectsTab({ appState, mutate }) {
 
 // ── ProjectRow ────────────────────────────────────────────────────────────────
 function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
-  hideDonePhases, onEdit, onDelete, onFlag, onArchive, onPhaseDone, onPhaseFlag, onOpenAlloc }) {
+  hideDonePhases, onEdit, onDelete, onArchive, onPhaseDone, onOpenAlloc }) {
 
   const wip     = pWIP(p)
   const wipPct  = Math.round(wip * 100)
@@ -434,13 +423,11 @@ function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
 
         {/* Controls */}
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={e => { e.stopPropagation(); onFlag() }}
-            className={clsx('btn btn-icon btn-sm', p.flag && 'text-flag')}
-            title="Flag"
-          >
-            <i className={clsx('ti', p.flag ? 'ti-flag-filled' : 'ti-flag')} style={{ fontSize: 12 }} />
-          </button>
+          {(p.flag || p.phases.some(ph => ph.flag)) && (
+            <span className="text-flag" title={p.flagNote || 'Flagged in Billing'} style={{ fontSize: 12 }}>
+              <i className="ti ti-flag-filled" />
+            </span>
+          )}
           <button
             onClick={e => { e.stopPropagation(); onArchive() }}
             className="btn btn-icon btn-sm text-olive"
@@ -458,7 +445,6 @@ function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
           <div className="flex items-center gap-1 font-semibold text-xs overflow-hidden">
             <span className="truncate">{p.project}</span>
             {p.archived && <span className="text-2xs bg-sand-3 text-olive px-1 rounded shrink-0">ARC</span>}
-            {(p.flag || p.phases.some(ph => ph.flag)) && <i className="ti ti-flag-filled text-flag shrink-0" style={{ fontSize: 10 }} />}
           </div>
           {p.notes && <div className="text-2xs text-dark-3 truncate">{p.notes}</div>}
         </div>
@@ -527,7 +513,6 @@ function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
                 project={p}
                 indent={addKey !== '__main__' ? 80 : 64}
                 onDone={() => onPhaseDone(ph.id)}
-                onFlag={() => onPhaseFlag(ph.id)}
                 onOpenAlloc={() => onOpenAlloc(ph)}
               />
             ))}
@@ -548,7 +533,7 @@ function ProjectRow({ project: p, expanded, onToggle, expandedAdd, onToggleAdd,
 }
 
 // ── PhaseRow ──────────────────────────────────────────────────────────────────
-function PhaseRow({ phase: ph, project: p, indent, onDone, onFlag, onOpenAlloc }) {
+function PhaseRow({ phase: ph, project: p, indent, onDone, onOpenAlloc }) {
   const rem    = phRem(ph)
   const billedOut = rem <= 0
   const as     = phAllocSt(ph)
@@ -571,9 +556,11 @@ function PhaseRow({ phase: ph, project: p, indent, onDone, onFlag, onOpenAlloc }
         <button onClick={onDone} className={clsx('btn btn-icon btn-sm', ph.done && 'text-success')} title={ph.done ? 'Mark incomplete' : 'Mark done'}>
           <i className="ti ti-circle-check" style={{ fontSize: 12 }} />
         </button>
-        <button onClick={onFlag} className={clsx('btn btn-icon btn-sm', ph.flag && 'text-flag')} title="Flag phase">
-          <i className={clsx('ti', ph.flag ? 'ti-flag-filled' : 'ti-flag')} style={{ fontSize: 12 }} />
-        </button>
+        {ph.flag && (
+          <span className="text-flag" title={ph.flagNote || 'Flagged in Billing'} style={{ fontSize: 12 }}>
+            <i className="ti ti-flag-filled" />
+          </span>
+        )}
       </div>
 
       <span className="text-2xs text-dark-3">{ph.scope}</span>
@@ -843,10 +830,11 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
           <input value={form.location || 'CA'} onChange={e => setField('location', e.target.value)} className="input text-xs w-24" />
         </div>
         <div className="flex items-end pb-1.5">
-          <label className="flex items-center gap-2 text-xs cursor-pointer">
-            <input type="checkbox" checked={form.flag || false} onChange={e => setField('flag', e.target.checked)} />
-            Follow-up flag
-          </label>
+          {form.flag && (
+            <span className="text-2xs text-flag flex items-center gap-1">
+              <i className="ti ti-flag-filled" style={{ fontSize: 11 }} /> Flagged in Billing
+            </span>
+          )}
         </div>
         <div className="col-span-2">
           <label className="block text-2xs text-olive uppercase tracking-wider mb-1">Notes</label>
