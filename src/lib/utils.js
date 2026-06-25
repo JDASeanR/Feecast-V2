@@ -108,6 +108,14 @@ export function useLocalPref(key, defaultValue) {
   return [value, set]
 }
 
+// ── Monthly goal with per-month overrides ────────────────────────────────────
+
+export const getMonthlyGoal = (mk, settings) => {
+  const overrides = settings?.billing?.monthlyGoalOverrides || {}
+  if (overrides[mk]) return overrides[mk]
+  return settings?.billing?.monthlyGoal || 395000
+}
+
 // ── Misc ─────────────────────────────────────────────────────────────────────
 
 export const clsx = (...args) =>

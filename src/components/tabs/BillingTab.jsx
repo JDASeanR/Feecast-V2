@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { fmt, clsx, CY, CM, CUR_MK, useLocalPref } from '../../lib/utils'
+import { fmt, clsx, CY, CM, CUR_MK, useLocalPref, getMonthlyGoal } from '../../lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const N_MONTHS = 18
@@ -327,7 +327,7 @@ export default function BillingTab({ appState, mutate, session }) {
                   <td key={m.key}
                     className={clsx('text-center font-bold text-xs px-1',
                       m.key === CUR_MK && 'bg-terracotta/15')}
-                    style={{ color: total >= monthlyGoal ? '#2d7a3a' : '#BD6439' }}>
+                    style={{ color: total >= getMonthlyGoal(m.key, settings) ? '#2d7a3a' : '#BD6439' }}>
                     {fmt(total)}
                   </td>
                 )
@@ -375,7 +375,7 @@ export default function BillingTab({ appState, mutate, session }) {
                   <td key={m.key}
                     className={clsx('text-center font-bold text-xs px-1',
                       m.key === CUR_MK && 'bg-terracotta/15')}
-                    style={{ color: t >= monthlyGoal ? '#2d7a3a' : '#BD6439' }}>
+                    style={{ color: t >= getMonthlyGoal(m.key, settings) ? '#2d7a3a' : '#BD6439' }}>
                     {fmt(t)}
                   </td>
                 )
@@ -385,12 +385,13 @@ export default function BillingTab({ appState, mutate, session }) {
             {/* vs goal */}
             <tr className="bg-sand border-b-2 border-sand-3">
               <td />
-              <SummaryCell label={`vs. goal (${fmt(monthlyGoal)})`} sticky />
+              <SummaryCell label="vs. goal" sticky />
               <td />
               {visMonths.map((m, i) => {
                 const hv    = hourlyData[m.key] || 0
                 const total = (ffTots[i] || 0) + hv
-                const diff  = total - monthlyGoal
+                const mGoal = getMonthlyGoal(m.key, settings)
+                const diff  = total - mGoal
                 return (
                   <td key={m.key}
                     className={clsx('text-center text-2xs px-1',

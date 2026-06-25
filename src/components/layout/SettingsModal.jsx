@@ -229,7 +229,50 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
                         set('billing',{...local.billing, monthlyGoal: monthly, annualGoal: Math.round(monthly*12)})
                       }}
                       className="input text-xs w-full" />
-                    <div className="text-2xs text-dark-3 mt-1">Used for billing progress bars and reports</div>
+                    <div className="text-2xs text-dark-3 mt-1">Default for all months unless overridden below</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-sand-2">
+                  <div className="font-semibold text-xs mb-1">Monthly Overrides</div>
+                  <div className="text-2xs text-dark-3 mb-3">Set a different goal for specific months. Blank months use the default above.</div>
+                  <div className="grid grid-cols-6 gap-2">
+                    {Array.from({length:12}, (_,i) => {
+                      const mo = i + 1
+                      const mk = `${new Date().getFullYear()}-${String(mo).padStart(2,'0')}`
+                      const override = (local.billing?.monthlyGoalOverrides || {})[mk] || ''
+                      const defaultGoal = local.billing?.monthlyGoal || 395000
+                      return (
+                        <div key={mk}>
+                          <label className="text-2xs text-olive uppercase tracking-wider">{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}</label>
+                          <input
+                            type="number"
+                            step={5000}
+                            value={override}
+                            placeholder={String(defaultGoal)}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value) || 0
+                              const overrides = { ...(local.billing?.monthlyGoalOverrides || {}) }
+                              if (val > 0) overrides[mk] = val
+                              else delete overrides[mk]
+                              set('billing', { ...local.billing, monthlyGoalOverrides: overrides })
+                            }}
+                            className="input text-xs w-full text-right"
+                            style={{ color: override ? '#3D3935' : '#b0aca0' }}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="text-2xs text-dark-3 mt-2">
+                    Effective annual: <strong>
+                      {new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(
+                        Array.from({length:12}, (_,i) => {
+                          const mk = `${new Date().getFullYear()}-${String(i+1).padStart(2,'0')}`
+                          return (local.billing?.monthlyGoalOverrides || {})[mk] || local.billing?.monthlyGoal || 395000
+                        }).reduce((s,v)=>s+v,0)
+                      )}
+                    </strong>
                   </div>
                 </div>
               </Section>

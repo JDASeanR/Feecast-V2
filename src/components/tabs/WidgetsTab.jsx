@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import * as d3 from 'd3'
-import { fmtK, fmt } from '../../lib/utils'
+import { fmtK, fmt, getMonthlyGoal } from '../../lib/utils'
 
 const CY = new Date().getFullYear()
 const CM = new Date().getMonth() + 1
@@ -149,12 +149,12 @@ function addGridlines(g, y, w, ticks) {
 // ══════════════════════════════════════════════════════════════════════════════
 // 1. BILLING PROGRESS
 // ══════════════════════════════════════════════════════════════════════════════
-function BillingProgressChart({ projects, hourlyData, monthlyGoal }) {
+function BillingProgressChart({ projects, hourlyData, monthlyGoal, settings }) {
   const data = []
   for (let mo = 1; mo <= 12; mo++) {
     const mk = `${CY}-${String(mo).padStart(2,'0')}`
     const ff = mTotal(mk, projects), hourly = hourlyData[mk] || 0
-    data.push({ mo, label: MONTHS[mo-1], ff, gross: ff + hourly, goal: monthlyGoal })
+    data.push({ mo, label: MONTHS[mo-1], ff, gross: ff + hourly, goal: getMonthlyGoal(mk, settings) })
   }
   const ytdFF = data.filter(d=>d.mo<CM).reduce((s,d)=>s+d.ff,0)
 
@@ -460,7 +460,7 @@ export default function WidgetsTab({ appState }) {
     <div className="overflow-auto" style={{ height: 'calc(100vh - 88px)', background: '#F5F5F1', padding: 24 }}>
       <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        <BillingProgressChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} />
+        <BillingProgressChart projects={projects} hourlyData={hourlyData} monthlyGoal={monthlyGoal} settings={settings} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           <ProjectionsByTypeChart projects={projects} />

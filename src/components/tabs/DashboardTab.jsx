@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { fmt, fmtK, clsx } from '../../lib/utils'
+import { fmt, fmtK, clsx, getMonthlyGoal } from '../../lib/utils'
 
 // ── Historical data ───────────────────────────────────────────────────────────
 const HIST_ALL = {
@@ -107,7 +107,7 @@ export default function DashboardTab({ appState, onNavigate }) {
   for (let m=1; m<CM; m++) {
     const mk = `${CY}-${String(m).padStart(2,'0')}`
     const ff = mTotalAll(mk, projects), hourly = hourlyData[mk]||0
-    BILLING_YTD.push({ m, mk, ff, hourly, gross:ff+hourly, goal:monthlyGoal })
+    BILLING_YTD.push({ m, mk, ff, hourly, gross:ff+hourly, goal:getMonthlyGoal(mk, settings) })
   }
   const BILLING_YEAR = []
   for (let m=1; m<=12; m++) {
@@ -115,7 +115,7 @@ export default function DashboardTab({ appState, onNavigate }) {
     const isPast = m < CM
     const ff = isPast?mTotalAll(mk,projects):0, hourly=isPast?(hourlyData[mk]||0):0
     const projFF=!isPast?mTotal(mk,projects):0, projHourly=!isPast?(hourlyData[mk]||0):0
-    BILLING_YEAR.push({ m, mk, ff, hourly, gross:ff+hourly, goal:monthlyGoal, isPast, projFF, projHourly })
+    BILLING_YEAR.push({ m, mk, ff, hourly, gross:ff+hourly, goal:getMonthlyGoal(mk, settings), isPast, projFF, projHourly })
   }
 
   const ytdFF     = BILLING_YTD.reduce((s,r)=>s+r.ff,0)
