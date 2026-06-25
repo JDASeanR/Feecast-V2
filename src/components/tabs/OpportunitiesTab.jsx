@@ -77,6 +77,16 @@ export default function OpportunitiesTab({ appState, mutate }) {
 
   // ── Mutate helpers ────────────────────────────────────────────────────────
   const saveOpp = useCallback(opp => {
+    if (opp === null) {
+      // Delete — editingOpp holds the opp being edited
+      setEditingOpp(prev => {
+        if (prev && prev !== 'new') {
+          mutate(s => ({ ...s, opportunities: s.opportunities.filter(o => o.id !== prev.id) }))
+        }
+        return null
+      })
+      return
+    }
     mutate(prev => {
       const exists = prev.opportunities.find(o => o.id === opp.id)
       return {
