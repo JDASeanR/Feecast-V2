@@ -434,7 +434,7 @@ export default function AppShell({ session, store }) {
       </nav>
 
       {/* Tab content */}
-      <main className="flex-1 min-h-0 overflow-hidden">
+      <main className="flex-1 min-h-0 overflow-auto">
         {activeTab === 'dashboard'
           ? <DashboardTab appState={appState} onNavigate={setActiveTab} />
           : activeTab === 'summary'
