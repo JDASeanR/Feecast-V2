@@ -1,0 +1,23 @@
+{
+  "name": "Feecast",
+  "short_name": "Feecast",
+  "description": "Project billing tracker for JD+A",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#3D3935",
+  "theme_color": "#3D3935",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

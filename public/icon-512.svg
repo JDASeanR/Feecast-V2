@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#3D3935"/>
+  <text x="256" y="285" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="120" letter-spacing="4">
+    <tspan fill="#F5F5F1">FEE</tspan><tspan fill="#BD6439">CAST</tspan>
+  </text>
+</svg>
