@@ -124,7 +124,6 @@ export default function BillingTab({ appState, mutate, session }) {
 
   // ── Mutate helpers ────────────────────────────────────────────────────────
   const setPct = useCallback((projId, phId, mk, pct) => {
-    console.log('setPct called:', { projId, phId, mk, pct })
     mutate(prev => {
       const next = { ...prev, projects: prev.projects.map(p => {
         if (p.id !== projId) return p
@@ -135,12 +134,13 @@ export default function BillingTab({ appState, mutate, session }) {
           return { ...ph, monthly: { ...ph.monthly, [mk]: dollars } }
         })}
       })}
-      // Auto-mark done if ≥99.9% billed out
+      // Auto-mark done if ≥99.9% billed out (only phases with a fee set)
       next.projects = next.projects.map(p => ({
         ...p,
         phases: p.phases.map(ph => {
+          const fee = phFeeFC(ph)
           const rem = phRem(ph)
-          return rem <= 0 && !ph.done ? { ...ph, done: true } : ph
+          return fee > 0 && rem <= 0 && !ph.done ? { ...ph, done: true } : ph
         })
       }))
       return next
