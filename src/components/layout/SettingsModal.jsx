@@ -19,6 +19,32 @@ export default function SettingsModal({ appState, mutate, onClose }) {
   const [section, setSection] = useState('pms')
   const [local, setLocal] = useState(() => JSON.parse(JSON.stringify(settings)))
   const [dirty, setDirty] = useState(false)
+  const [sendingDigest, setSendingDigest] = useState(false)
+  const [digestMsg, setDigestMsg] = useState(null)
+  const [sendingProj, setSendingProj] = useState(false)
+  const [projMsg, setProjMsg] = useState(null)
+
+  const sendDigestNow = async () => {
+    setSendingDigest(true); setDigestMsg(null)
+    try {
+      const resp = await fetch('/api/daily-digest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manual: true }) })
+      if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error || 'Failed')
+      setDigestMsg('Digest sent')
+    } catch (e) { setDigestMsg('Error: ' + e.message) }
+    setSendingDigest(false)
+    setTimeout(() => setDigestMsg(null), 5000)
+  }
+
+  const sendProjectionNow = async () => {
+    setSendingProj(true); setProjMsg(null)
+    try {
+      const resp = await fetch('/api/projection-reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manual: true }) })
+      if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).error || 'Failed')
+      setProjMsg('Reminders sent')
+    } catch (e) { setProjMsg('Error: ' + e.message) }
+    setSendingProj(false)
+    setTimeout(() => setProjMsg(null), 5000)
+  }
 
   const set = useCallback((path, value) => {
     setLocal(prev => {
@@ -377,6 +403,15 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                     </div>
                   </div>
 
+                  <div className="flex items-center gap-3 mt-2">
+                    <button onClick={sendDigestNow} disabled={sendingDigest}
+                      className="btn text-xs" style={{ opacity: sendingDigest ? 0.5 : 1 }}>
+                      <i className={clsx('ti', sendingDigest ? 'ti-loader-2 spin' : 'ti-send')} style={{ fontSize: 13 }} />
+                      {sendingDigest ? 'Sending…' : 'Send Digest Now'}
+                    </button>
+                    {digestMsg && <span className={clsx('text-2xs', digestMsg.startsWith('Error') ? 'text-flag' : 'text-success')}>{digestMsg}</span>}
+                  </div>
+
                   {/* Projection Reminders */}
                   <div className="pt-4 border-t border-sand-2">
                     <div className="font-semibold text-xs mb-1">Projection Reminders</div>
@@ -447,6 +482,15 @@ export default function SettingsModal({ appState, mutate, onClose }) {
                       className="input text-xs w-full h-14 font-mono resize-y"
                       placeholder="one@email.com&#10;two@email.com" />
                     <div className="text-2xs text-dark-3 mt-1">Receives a single summary of all under-allocated phases across all PMs</div>
+
+                    <div className="flex items-center gap-3 mt-3">
+                      <button onClick={sendProjectionNow} disabled={sendingProj}
+                        className="btn text-xs" style={{ opacity: sendingProj ? 0.5 : 1 }}>
+                        <i className={clsx('ti', sendingProj ? 'ti-loader-2 spin' : 'ti-send')} style={{ fontSize: 13 }} />
+                        {sendingProj ? 'Sending…' : 'Send Reminders Now'}
+                      </button>
+                      {projMsg && <span className={clsx('text-2xs', projMsg.startsWith('Error') ? 'text-flag' : 'text-success')}>{projMsg}</span>}
+                    </div>
                   </div>
                 </div>
               </Section>
