@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { fmt, clsx, CY, CM, CUR_MK, useLocalPref } from '../../lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -905,12 +906,13 @@ function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, onSave
       >
         <i className={clsx('ti', flagged ? 'ti-flag-filled' : 'ti-flag')} />
       </button>
-      {showPopup && (
+      {showPopup && createPortal(
         <FlagPopup
           isProject={isProject}
           onSave={data => { onSave(data); setShowPopup(false) }}
           onClose={() => setShowPopup(false)}
-        />
+        />,
+        document.body
       )}
     </div>
   )
