@@ -57,7 +57,7 @@ function resolveClient(clientStr, allProjects, idx) {
 }
 
 // ── BillingTab ────────────────────────────────────────────────────────────────
-export default function BillingTab({ appState, mutate }) {
+export default function BillingTab({ appState, mutate, session }) {
   const { projects, settings } = appState
   const pmList    = (settings.pms || []).map(p => p.name)
   const monthlyGoal = settings.billing?.monthlyGoal || 395000
@@ -169,6 +169,10 @@ export default function BillingTab({ appState, mutate }) {
   }, [mutate])
 
   const setFlag = useCallback((projId, phId, flagData) => {
+    const stamp = flagData.flag ? {
+      flagBy: session?.user?.email || '—',
+      flagAt: new Date().toISOString(),
+    } : { flagBy: null, flagAt: null }
     mutate(prev => ({
       ...prev,
       projects: prev.projects.map(p => {
@@ -176,13 +180,13 @@ export default function BillingTab({ appState, mutate }) {
         if (phId) {
           return { ...p, phases: p.phases.map(ph => {
             if (ph.id !== phId) return ph
-            return { ...ph, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: false }
+            return { ...ph, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: false, ...stamp }
           })}
         }
-        return { ...p, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: flagData.newProject || false }
+        return { ...p, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: flagData.newProject || false, ...stamp }
       })
     }))
-  }, [mutate])
+  }, [mutate, session])
 
   const togglePM = key =>
     setExpandedPM(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
@@ -537,6 +541,8 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             flagged={p.flag}
             note={p.flagNote}
             newProject={p.flagNewProject}
+            flagBy={p.flagBy}
+            flagAt={p.flagAt}
             isProject
             onSave={data => setFlag(p.id, null, data)}
           />
@@ -672,6 +678,8 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
         <FlagCell
           flagged={ph.flag}
           note={ph.flagNote}
+          flagBy={ph.flagBy}
+          flagAt={ph.flagAt}
           onSave={data => setFlag(p.id, ph.id, data)}
         />
       </td>
@@ -863,7 +871,18 @@ function ConfDots({ phId, conf, onSet }) {
 }
 
 // ── FlagCell ──────────────────────────────────────────────────────────────────
-function FlagCell({ flagged, note, newProject, isProject, onSave }) {
+function flagTooltip({ note, newProject, flagBy, flagAt }) {
+  const parts = []
+  if (newProject) parts.push('New Project')
+  else if (note) parts.push(note)
+  if (flagBy) parts.push('— ' + flagBy)
+  if (flagAt) {
+    try { parts.push(new Date(flagAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })) } catch {}
+  }
+  return parts.join('\n') || 'Flagged'
+}
+
+function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, onSave }) {
   const [showPopup, setShowPopup] = useState(false)
 
   const handleClick = () => {
@@ -878,7 +897,7 @@ function FlagCell({ flagged, note, newProject, isProject, onSave }) {
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button
         onClick={handleClick}
-        title={flagged ? (newProject ? 'New Project' : note || 'Flagged') : 'Flag for follow-up'}
+        title={flagged ? flagTooltip({ note, newProject, flagBy, flagAt }) : 'Flag for follow-up'}
         style={{
           background: 'none', border: 'none', cursor: 'pointer', padding: 2,
           fontSize: 13, color: flagged ? '#c0392b' : '#ccc',

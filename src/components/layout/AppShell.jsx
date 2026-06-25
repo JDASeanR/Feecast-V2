@@ -435,7 +435,7 @@ export default function AppShell({ session, store }) {
           : activeTab === 'summary'
           ? <SummaryTab appState={appState} />
           : activeTab === 'billing'
-          ? <BillingTab appState={appState} mutate={store.mutate} />
+          ? <BillingTab appState={appState} mutate={store.mutate} session={session} />
           : activeTab === 'projects'
           ? <ProjectsTab appState={appState} mutate={store.mutate} />
           : activeTab === 'opportunities'
