@@ -482,14 +482,21 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
 
   const vsGoal = grandTotal - monthlyGoal
   const logo = appState.settings?.firm?.logo
+  const dt = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
   const graphiteHeader = `
-    <div style="background:#3D3935;border-radius:6px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="width:28px;height:3px;background:#BD6439;border-radius:2px;margin-bottom:8px"></div>
-        <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:26px;letter-spacing:.04em;color:#F5F5F1">Monthly Billing Report</div>
-        <div style="font-size:12px;color:rgba(245,245,241,0.55);margin-top:4px">${monthLabel} · ${subtitle}</div>
+    <div style="background:#3D3935;border-radius:6px;padding:18px 20px;margin-bottom:20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div style="flex:1">
+          <div style="font-size:10px;color:rgba(245,245,241,0.4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">JEFFREY DeMURE + ASSOCIATES · ARCHITECTS · PLANNERS</div>
+          <div style="width:28px;height:3px;background:#BD6439;border-radius:2px;margin-bottom:8px"></div>
+          <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:28px;letter-spacing:.04em;color:#F5F5F1">Monthly Billing Report</div>
+          <div style="font-size:12px;color:rgba(245,245,241,0.55);margin-top:4px">${monthLabel} · ${subtitle}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;margin-left:16px">
+          ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
+          <div style="font-size:10px;color:rgba(245,245,241,0.4);text-align:right">${dt} · CONFIDENTIAL</div>
+        </div>
       </div>
-      ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
     </div>`
   return PAGE_WRAP(`
     ${graphiteHeader}

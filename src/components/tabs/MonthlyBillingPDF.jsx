@@ -98,11 +98,17 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
         <View style={S.titleBlock}>
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start' }}>
             <View style={{ flex:1 }}>
+              <Text style={{ fontSize:7, color:'rgba(245,245,241,0.4)', letterSpacing:1, textTransform:'uppercase', marginBottom:8 }}>
+                JEFFREY DeMURE + ASSOCIATES · ARCHITECTS · PLANNERS
+              </Text>
               <View style={S.titleAccent} />
               <Text style={S.title}>Monthly Billing Report</Text>
               <Text style={S.subtitle}>{monthLabel} · {subtitle}</Text>
             </View>
-            {useLogo && <Image src={useLogo} style={{ width:44, height:44, borderRadius:4, opacity:0.85 }} />}
+            <View style={{ alignItems:'flex-end', gap:6 }}>
+              {useLogo && <Image src={useLogo} style={{ width:44, height:44, borderRadius:4, opacity:0.85 }} />}
+              <Text style={{ fontSize:7, color:'rgba(245,245,241,0.4)', textAlign:'right' }}>{dt} · CONFIDENTIAL</Text>
+            </View>
           </View>
         </View>
 
