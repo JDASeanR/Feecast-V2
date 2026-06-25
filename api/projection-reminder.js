@@ -276,7 +276,7 @@ async function sendEmail(to, subject, html) {
   return { ok: r.ok, data: await r.json() };
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
