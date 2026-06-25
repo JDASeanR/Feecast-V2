@@ -78,9 +78,13 @@ function reportHeader(title, subtitle, template, logo) {
           <div style="font-size:10px;color:#a09c85;margin-top:1px">CONFIDENTIAL</div>
         </div>
       </div>
-      <div style="margin-top:12px;padding-bottom:10px;border-bottom:3px solid #BD6439">
-        <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:26px;letter-spacing:.04em;color:#3D3935">${title}</div>
-        ${subtitle?`<div style="font-size:12px;color:#736F4C;margin-top:3px">${subtitle}</div>`:''}
+      <div style="background:#3D3935;border-radius:6px;padding:16px 20px;margin-top:12px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="width:28px;height:3px;background:#BD6439;border-radius:2px;margin-bottom:8px"></div>
+          <div style="font-family:'League Gothic','Nunito Sans',sans-serif;font-size:26px;letter-spacing:.04em;color:#F5F5F1">${title}</div>
+          ${subtitle?`<div style="font-size:12px;color:rgba(245,245,241,0.55);margin-top:4px">${subtitle}</div>`:''}
+        </div>
+        ${logo?`<img src="${logo}" style="height:52px;max-width:130px;object-fit:contain;border-radius:4px;opacity:.85">`:''}
       </div>
     </div>`
 }
