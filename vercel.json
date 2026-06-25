@@ -4,5 +4,15 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/daily-digest",
+      "schedule": "0 16 * * 1-5"
+    },
+    {
+      "path": "/api/projection-reminder",
+      "schedule": "0 16 * * 1"
+    }
   ]
 }

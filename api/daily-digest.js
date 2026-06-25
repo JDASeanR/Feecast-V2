@@ -16,9 +16,15 @@ const fmtK = n => Math.abs(n||0) >= 1e6
   : fmt(n);
 
 async function supa(path) {
+  const key = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    headers: { apikey: key, Authorization: `Bearer ${key}` }
   });
+  if (!r.ok) {
+    const err = await r.text();
+    console.error(`Supabase fetch error [${path}]:`, r.status, err);
+    return [];
+  }
   return r.json();
 }
 
@@ -53,13 +59,13 @@ function calcDigest({ projects, invoices, settings, opportunities }) {
   let curMonth = 0;
   projects.forEach(p => p.phases?.forEach(ph => { curMonth += ph.monthly?.[curMk] || 0; }));
 
-  const monthlyGoal = (settings.billing?.annualGoal || 4740000) / 12;
+  const monthlyGoal = settings.billing?.monthlyGoal || Math.round((settings.billing?.annualGoal || 4740000) / 12);
   const ytdGoal     = monthlyGoal * (cm - 1);
 
   // Total fees and backlog
   let totalFees = 0, totalBilled = 0;
   projects.forEach(p => p.phases?.forEach(ph => {
-    const fee = ph.scope === 'CA' ? (ph.fee || 0) * (ph.caMonths || 0) : (ph.fee || 0);
+    const fee = ph.scope === 'CA' ? (ph.fee || 0) * (ph.caMonths || 12) : (ph.fee || 0);
     totalFees  += fee;
     totalBilled += ph.billed || 0;
     for (let m = 1; m < cm; m++) {
