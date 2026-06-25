@@ -109,7 +109,16 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
                 <div className="space-y-2 mb-3">
                   {(local.pms || []).map((pm, i) => (
                     <div key={pm.id} className="flex items-center gap-2">
-                      <input value={pm.name} onChange={e => { const p=[...local.pms];p[i]={...p[i],name:e.target.value};set('pms',p) }}
+                      <input value={pm.name} onChange={e => {
+                        const oldName = pm.name, newName = e.target.value
+                        const p=[...local.pms];p[i]={...p[i],name:newName};set('pms',p)
+                        if (oldName && newName && oldName !== newName) {
+                          mutate(prev => ({
+                            ...prev,
+                            projects: prev.projects.map(pr => pr.pm === oldName ? { ...pr, pm: newName } : pr)
+                          }))
+                        }
+                      }}
                         className="input text-xs w-16 font-mono font-bold" placeholder="Init" />
                       <input value={pm.fullName||''} onChange={e => { const p=[...local.pms];p[i]={...p[i],fullName:e.target.value};set('pms',p) }}
                         className="input text-xs flex-1" placeholder="Full name" />
