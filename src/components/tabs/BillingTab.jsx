@@ -3,6 +3,7 @@ import { fmt, clsx, CY, CM, CUR_MK, useLocalPref } from '../../lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const N_MONTHS = 18
+const COL_FLAG = 28
 const COL_NAME = 168
 const COL_FEE  = 72
 const COL_MO   = 66
@@ -167,6 +168,22 @@ export default function BillingTab({ appState, mutate }) {
     }))
   }, [mutate])
 
+  const setFlag = useCallback((projId, phId, flagData) => {
+    mutate(prev => ({
+      ...prev,
+      projects: prev.projects.map(p => {
+        if (p.id !== projId) return p
+        if (phId) {
+          return { ...p, phases: p.phases.map(ph => {
+            if (ph.id !== phId) return ph
+            return { ...ph, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: false }
+          })}
+        }
+        return { ...p, flag: flagData.flag, flagNote: flagData.note || '', flagNewProject: flagData.newProject || false }
+      })
+    }))
+  }, [mutate])
+
   const togglePM = key =>
     setExpandedPM(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
   const toggleClient = key =>
@@ -266,6 +283,10 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* Column headers */}
             <tr className="bg-sand-2">
+              <th className="bg-sand-2 text-center px-0 py-2 border-b border-sand-3"
+                style={{ width: COL_FLAG, minWidth: COL_FLAG }}>
+                <i className="ti ti-flag" style={{ fontSize: 12, color: '#736F4C' }} />
+              </th>
               <th className="sticky left-0 z-10 bg-sand-2 text-left font-semibold px-2 py-2 border-b border-sand-3"
                 style={{ minWidth: COL_NAME }}>
                 Project / Phase
@@ -291,6 +312,7 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* Monthly total */}
             <tr className="bg-sand border-t-2 border-sand-3">
+              <td />
               <SummaryCell label="Monthly total" bold sticky />
               <td />
               {visMonths.map((m, i) => {
@@ -309,6 +331,7 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* Hourly / reimbursable */}
             <tr className="bg-sand-2">
+              <td />
               <SummaryCell label={<>Hourly / reimbursable <span className="text-dark-3 font-normal">(manual)</span></>} sticky />
               <td />
               {visMonths.map(m => {
@@ -338,6 +361,7 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* FF subtotal */}
             <tr className="bg-sand-2">
+              <td />
               <SummaryCell label="FF subtotal" bold sticky />
               <td />
               {visMonths.map((m, i) => {
@@ -355,6 +379,7 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* vs goal */}
             <tr className="bg-sand border-b-2 border-sand-3">
+              <td />
               <SummaryCell label={`vs. goal (${fmt(monthlyGoal)})`} sticky />
               <td />
               {visMonths.map((m, i) => {
@@ -387,6 +412,7 @@ export default function BillingTab({ appState, mutate }) {
               return [
                 // PM header row
                 <tr key={pmKey} className="bg-[#1a1a1a] text-white">
+                  <td className="bg-[#1a1a1a]" style={{ width: COL_FLAG }} />
                   <td className="sticky left-0 z-10 bg-[#1a1a1a] px-2 py-1.5 font-bold text-xs"
                     style={{ minWidth: COL_NAME }}>
                     <button
@@ -416,6 +442,7 @@ export default function BillingTab({ appState, mutate }) {
                   return [
                     // Client header
                     <tr key={clientKey} className="bg-sand-2/80">
+                      <td className="bg-sand-2" style={{ width: COL_FLAG }} />
                       <td className="sticky left-0 z-10 bg-sand-2 px-2 py-1 text-xs"
                         style={{ minWidth: COL_NAME, paddingLeft: 20 }}>
                         <button
@@ -446,6 +473,7 @@ export default function BillingTab({ appState, mutate }) {
                         setPct={setPct}
                         setBillingConf={setBillingConf}
                         setHoldStatus={setHoldStatus}
+                        setFlag={setFlag}
                       />
                     ))
                   ]
@@ -455,6 +483,7 @@ export default function BillingTab({ appState, mutate }) {
 
             {/* Grand total */}
             <tr className="bg-sand-2 border-t-2 border-sand-3">
+              <td style={{ width: COL_FLAG }} />
               <td className="sticky left-0 z-10 bg-sand-2 px-2 py-2 font-bold text-xs"
                 style={{ minWidth: COL_NAME }}>
                 Grand total — {resolvedProjects.length} project{resolvedProjects.length !== 1 ? 's' : ''} · {resolvedProjects.reduce((s, p) => s + p.phases.length, 0)} phases
@@ -494,21 +523,28 @@ function SummaryCell({ label, bold, sticky }) {
 }
 
 // ── ProjectRows ───────────────────────────────────────────────────────────────
-function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf, setHoldStatus }) {
+function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf, setHoldStatus, setFlag }) {
   const pFee = p.phases.reduce((s, ph) => s + phFeeFC(ph), 0)
   const pTots = visMonths.map(m =>
     p.phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
-  const flagged = p.flag || p.phases.some(ph => ph.flag)
 
   return (
     <>
       {/* Project row */}
       <tr className="bg-white hover:bg-sand">
+        <td className="text-center border-b border-sand-2" style={{ width: COL_FLAG }}>
+          <FlagCell
+            flagged={p.flag}
+            note={p.flagNote}
+            newProject={p.flagNewProject}
+            isProject
+            onSave={data => setFlag(p.id, null, data)}
+          />
+        </td>
         <td className="sticky left-0 z-10 bg-inherit px-2 py-1 border-b border-sand-2"
           style={{ minWidth: COL_NAME, paddingLeft: 34 }}>
           <div className="flex items-center gap-1 overflow-hidden">
             <span className="truncate text-xs font-semibold">{p.project}</span>
-            {flagged && <i className="ti ti-flag-filled text-flag shrink-0" style={{ fontSize: 10 }} />}
           </div>
           <div className="text-2xs text-olive">{p.pm} · {p.projNo}</div>
         </td>
@@ -544,6 +580,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             setPct={setPct}
             setBillingConf={setBillingConf}
             setHoldStatus={setHoldStatus}
+            setFlag={setFlag}
           />
         ))
       })()}
@@ -552,7 +589,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
 }
 
 // ── AddendumGroup ─────────────────────────────────────────────────────────────
-function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf, setHoldStatus }) {
+function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf, setHoldStatus, setFlag }) {
   return (
     <>
       {/* Addendum header (skip for main group) */}
@@ -563,6 +600,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
           phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
         return (
           <tr className="bg-sand-2 border-t border-sand-2">
+            <td className="bg-sand-2" style={{ width: COL_FLAG }} />
             <td className="sticky left-0 z-10 bg-sand-2 px-2 py-1 border-b border-sand-2"
               style={{ paddingLeft: 40 }}>
               <div className="text-xs font-semibold text-terracotta">{addKey}</div>
@@ -594,6 +632,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
           setPct={setPct}
           setBillingConf={setBillingConf}
           setHoldStatus={setHoldStatus}
+          setFlag={setFlag}
         />
       ))}
     </>
@@ -604,7 +643,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
 const HOLD_LABELS = { 'not-authorized': 'Not Authorized', 'awaiting-approval': 'Awaiting Approval' }
 const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-clock' }
 
-function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf, setHoldStatus }) {
+function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf, setHoldStatus, setFlag }) {
   const [holdOpen, setHoldOpen] = useState(false)
   const holdRef = useRef(null)
   const rem      = phRem(ph)
@@ -628,6 +667,14 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
 
   return (
     <tr className={clsx('border-b border-sand-2', billedOut || ph.done ? 'opacity-40' : onHold ? 'opacity-60' : '')}>
+      {/* Flag */}
+      <td className="text-center border-b border-sand-2" style={{ width: COL_FLAG }}>
+        <FlagCell
+          flagged={ph.flag}
+          note={ph.flagNote}
+          onSave={data => setFlag(p.id, ph.id, data)}
+        />
+      </td>
       {/* Name / alloc status */}
       <td className="sticky left-0 bg-white px-2 py-1 border-b border-sand-2"
         style={{ minWidth: COL_NAME, paddingLeft: indent, zIndex: holdOpen ? 100 : 10 }}>
@@ -811,6 +858,115 @@ function ConfDots({ phId, conf, onSet }) {
           }}
         />
       ))}
+    </div>
+  )
+}
+
+// ── FlagCell ──────────────────────────────────────────────────────────────────
+function FlagCell({ flagged, note, newProject, isProject, onSave }) {
+  const [showPopup, setShowPopup] = useState(false)
+
+  const handleClick = () => {
+    if (flagged) {
+      onSave({ flag: false, note: '', newProject: false })
+    } else {
+      setShowPopup(true)
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={handleClick}
+        title={flagged ? (newProject ? 'New Project' : note || 'Flagged') : 'Flag for follow-up'}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+          fontSize: 13, color: flagged ? '#c0392b' : '#ccc',
+        }}
+      >
+        <i className={clsx('ti', flagged ? 'ti-flag-filled' : 'ti-flag')} />
+      </button>
+      {showPopup && (
+        <FlagPopup
+          isProject={isProject}
+          onSave={data => { onSave(data); setShowPopup(false) }}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── FlagPopup ─────────────────────────────────────────────────────────────────
+function FlagPopup({ isProject, onSave, onClose }) {
+  const [note, setNote] = useState('')
+  const [isNew, setIsNew] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose() }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [onClose])
+
+  const canSave = isNew || note.trim().length > 0
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', top: '100%', left: -4, zIndex: 9999,
+      background: '#fff', border: '1px solid rgba(61,57,53,0.2)',
+      borderRadius: 6, padding: 16, width: 280,
+      boxShadow: '0 8px 30px rgba(61,57,53,0.25)',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#3D3935', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <i className="ti ti-flag-filled" style={{ color: '#c0392b', fontSize: 14 }} />
+        Flag for Follow-up
+      </div>
+
+      {isProject && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#3D3935', marginBottom: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={isNew} onChange={e => setIsNew(e.target.checked)} />
+          New project
+        </label>
+      )}
+
+      {!isNew && (
+        <textarea
+          autoFocus
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="Why is this being flagged?"
+          rows={3}
+          style={{
+            width: '100%', fontSize: 12, padding: 8, borderRadius: 4,
+            border: '1px solid rgba(61,57,53,0.2)', resize: 'vertical',
+            fontFamily: 'inherit', outline: 'none',
+          }}
+          onFocus={e => e.target.style.borderColor = '#BD6439'}
+          onBlur={e => e.target.style.borderColor = 'rgba(61,57,53,0.2)'}
+        />
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
+        <button
+          onClick={onClose}
+          style={{
+            fontSize: 11, padding: '4px 12px', borderRadius: 4,
+            border: '1px solid rgba(61,57,53,0.15)', background: '#F5F5F1',
+            color: '#736F4C', cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >Cancel</button>
+        <button
+          disabled={!canSave}
+          onClick={() => onSave({ flag: true, note: isNew ? '' : note.trim(), newProject: isNew })}
+          style={{
+            fontSize: 11, padding: '4px 12px', borderRadius: 4,
+            border: 'none', background: canSave ? '#c0392b' : '#ccc',
+            color: '#fff', cursor: canSave ? 'pointer' : 'default',
+            fontFamily: 'inherit', fontWeight: 600,
+          }}
+        >Flag</button>
+      </div>
     </div>
   )
 }
