@@ -1,5 +1,9 @@
-import { clsx } from '../../lib/utils'
-import { fmt } from '../../lib/utils'
+import { clsx, fmt } from '../../lib/utils'
+
+const fmtDate = iso => {
+  try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) }
+  catch { return '' }
+}
 
 // Re-use phase calc helpers (same as ProjectsTab)
 const CY = new Date().getFullYear()
@@ -80,14 +84,15 @@ export default function FollowUpTab({ appState, mutate }) {
             Projects ({flaggedProjects.length})
           </div>
           <div className="overflow-x-auto">
-            <table className="data-table w-full min-w-[700px]">
+            <table className="data-table w-full min-w-[900px]">
               <thead>
                 <tr>
-                  <th style={{ width: 60 }} />
+                  <th style={{ width: 36 }} />
                   <th style={{ width: 32 }}>PM</th>
                   <th style={{ width: 56 }}>Proj #</th>
                   <th>Project / Client</th>
                   <th style={{ width: 48 }}>Status</th>
+                  <th>Flag Note</th>
                   <th style={{ width: 80 }}>Fee</th>
                   <th style={{ width: 80 }}>Remaining</th>
                   <th style={{ width: 72 }}>WIP</th>
@@ -102,22 +107,34 @@ export default function FollowUpTab({ appState, mutate }) {
                   return [
                     <tr key={p.id} className="bg-sand-2/50">
                       <td className="px-1">
-                        <div className="flex gap-0.5">
-                          <button onClick={() => toggleProjFlag(p.id)}
-                            className={clsx('btn btn-icon btn-sm', p.flag && 'text-flag')}>
-                            <i className={clsx('ti', p.flag ? 'ti-flag-filled' : 'ti-flag')} style={{ fontSize: 11 }} />
-                          </button>
-                        </div>
+                        <button onClick={() => toggleProjFlag(p.id)}
+                          className={clsx('btn btn-icon btn-sm', p.flag && 'text-flag')}>
+                          <i className={clsx('ti', p.flag ? 'ti-flag-filled' : 'ti-flag')} style={{ fontSize: 11 }} />
+                        </button>
                       </td>
                       <td className="px-2 text-xs text-olive">{p.pm}</td>
                       <td className="px-2 text-xs text-dark-3">{p.projNo}</td>
                       <td className="px-2">
                         <div className="font-semibold text-xs">{p.project}</div>
                         <div className="text-2xs text-olive">{p.client}</div>
-                        {p.notes && <div className="text-2xs text-dark-3 italic">{p.notes}</div>}
                       </td>
                       <td className="px-2 text-center">
                         <span className="text-2xs bg-sand-2 text-olive px-1.5 py-0.5 rounded">{p.status}</span>
+                      </td>
+                      <td className="px-2">
+                        {p.flag && (
+                          <div>
+                            {p.flagNewProject
+                              ? <span className="text-xs font-semibold" style={{ color: '#2563EB' }}>New Project</span>
+                              : p.flagNote && <div className="text-xs">{p.flagNote}</div>
+                            }
+                            {p.flagBy && (
+                              <div className="text-2xs text-olive mt-0.5">
+                                {p.flagBy}{p.flagAt ? ' · ' + fmtDate(p.flagAt) : ''}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 text-xs">{fmt(pFee(p))}</td>
                       <td className="px-2 text-xs text-olive">{fmt(pRem(p))}</td>
@@ -141,7 +158,16 @@ export default function FollowUpTab({ appState, mutate }) {
                         </td>
                         <td className="px-2 text-2xs text-dark-3">{ph.scope}</td>
                         <td />
-                        <td className="px-2 text-xs text-olive" colSpan={2}>{ph.name}</td>
+                        <td className="px-2 text-xs text-olive">{ph.name}</td>
+                        <td />
+                        <td className="px-2">
+                          {ph.flagNote && <div className="text-xs">{ph.flagNote}</div>}
+                          {ph.flagBy && (
+                            <div className="text-2xs text-olive mt-0.5">
+                              {ph.flagBy}{ph.flagAt ? ' · ' + fmtDate(ph.flagAt) : ''}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-2 text-xs">{fmt(ph.fee)}</td>
                         <td className="px-2 text-xs text-olive">{fmt(phRem(ph))}</td>
                         <td className="px-2 text-xs">{ph.pct || 0}%</td>
