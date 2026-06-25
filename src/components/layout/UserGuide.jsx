@@ -190,7 +190,7 @@ const CONTENT = {
       <p style={{ marginBottom: 12 }}>Configure all firm and app settings from the gear icon in the header.</p>
       <Feature icon="ti-users" title="Project Managers">Add, edit, or remove PMs. Set individual monthly goals and email addresses for digest delivery.</Feature>
       <Feature icon="ti-tag" title="Scope & Project Types">Define scope codes (SD, DD, CD, CA, etc.) and project type classifications (SFD, MF, COM, etc.).</Feature>
-      <Feature icon="ti-target" title="Billing Goals">Set annual and monthly billing targets. Changing one automatically updates the other (annual = monthly × 12).</Feature>
+      <Feature icon="ti-target" title="Billing Goals">Set annual and monthly billing targets. Changing one automatically updates the other (annual = monthly × 12). Use the Monthly Overrides grid to set different targets for individual months — blank months use the default. The effective annual total recalculates automatically. Overrides are reflected in the Dashboard, Billing tab, and Widgets charts.</Feature>
       <Feature icon="ti-id-badge" title="Employee Counts">Set billable and total employee counts used for per-employee revenue calculations on the Dashboard.</Feature>
       <Feature icon="ti-building" title="Firm & App">Set firm name, upload logo (used in reports and email digest), and configure the Smartsheet connection.</Feature>
       <Feature icon="ti-mail" title="Email Digest">Configure automated daily digest emails — set schedule, recipients, and sections to include. Use "Send Digest Now" for immediate delivery.</Feature>
