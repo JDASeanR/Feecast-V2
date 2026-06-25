@@ -13,6 +13,7 @@ import AllocationWarningsTab from '../tabs/AllocationWarningsTab.jsx'
 import DashboardTab from '../tabs/DashboardTab.jsx'
 import SummaryTab from '../tabs/SummaryTab.jsx'
 import ReportsTab from '../tabs/ReportsTab.jsx'
+import WidgetsTab from '../tabs/WidgetsTab.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'followup',      label: 'Follow-up',           icon: 'ti-flag' },
   { id: 'warnings',      label: 'Allocation Warnings', icon: 'ti-alert-triangle' },
   { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
+  { id: 'widgets',       label: 'Widgets',             icon: 'ti-chart-area-line' },
 ]
 
 // ── Smartsheet parser ─────────────────────────────────────────────────────────
@@ -448,6 +450,8 @@ export default function AppShell({ session, store }) {
           ? <AllocationWarningsTab appState={appState} />
           : activeTab === 'reports'
           ? <ReportsTab appState={appState} />
+          : activeTab === 'widgets'
+          ? <WidgetsTab appState={appState} />
           : <div className="overflow-auto h-full">
               <PlaceholderTab
                 tabId={activeTab}
