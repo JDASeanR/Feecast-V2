@@ -392,11 +392,11 @@ export default function AppShell({ session, store }) {
               onDrop={e => {
                 e.currentTarget.style.borderLeft = 'none'
                 if (!dragTab || dragTab === tab.id) return
-                setTabOrder(prev => {
-                  const order = [...prev]
+                setTabOrder(() => {
+                  const order = orderedTabs.map(t => t.id)
                   const fromIdx = order.indexOf(dragTab)
                   const toIdx = order.indexOf(tab.id)
-                  if (fromIdx === -1 || toIdx === -1) return prev
+                  if (fromIdx === -1 || toIdx === -1) return order
                   order.splice(fromIdx, 1)
                   order.splice(toIdx, 0, dragTab)
                   return order
