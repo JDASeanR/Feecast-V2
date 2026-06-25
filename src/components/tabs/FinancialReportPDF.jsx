@@ -21,9 +21,10 @@ const S = StyleSheet.create({
   headerDate: { fontSize: 8, color: '#a09c85' },
   headerConfidential: { fontSize: 7, color: '#a09c85', marginTop: 2, letterSpacing: 0.5 },
   // Title
-  titleBlock: { marginTop: 12, paddingBottom: 10, borderBottomWidth: 3, borderBottomColor: '#BD6439', marginBottom: 16 },
-  title: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#3D3935', letterSpacing: 0.5 },
-  subtitle: { fontSize: 9, color: '#736F4C', marginTop: 3 },
+  titleBlock: { backgroundColor: '#3D3935', borderRadius: 4, padding: '14px 16px', marginTop: 12, marginBottom: 16 },
+  titleAccent: { width: 32, height: 3, backgroundColor: '#BD6439', borderRadius: 1.5, marginBottom: 8 },
+  title: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: '#F5F5F1', letterSpacing: 0.5 },
+  subtitle: { fontSize: 9, color: 'rgba(245,245,241,0.6)', marginTop: 4 },
   // KPI grid
   kpiRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   kpiCard: { flex: 1, backgroundColor: '#F5F5F1', borderRadius: 5, padding: 10, borderTopWidth: 3, borderTopColor: '#BD6439' },
@@ -186,8 +187,14 @@ export default function FinancialReportPDF({ appState, pm, client, fromMk, toMk,
 
         {/* Title */}
         <View style={S.titleBlock}>
-          <Text style={S.title}>Firm Financial Summary</Text>
-          <Text style={S.subtitle}>{subtitle}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <View style={S.titleAccent} />
+              <Text style={S.title}>Firm Financial Summary</Text>
+              <Text style={S.subtitle}>{subtitle}</Text>
+            </View>
+            {useLogo && <Image src={useLogo} style={{ width: 44, height: 44, borderRadius: 4, opacity: 0.85 }} />}
+          </View>
         </View>
 
         {/* KPI row */}
