@@ -123,19 +123,24 @@ export default function ProjectsTab({ appState, mutate }) {
   const saveProject = useCallback(proj => {
     mutate(prev => {
       const exists = prev.projects.find(p => p.id === proj.id)
-      // Assign IDs to any phases that don't have one yet
-      let nextId = prev.nextId
-      const phasesWithIds = proj.phases.map(ph => {
-        if (ph.id != null) return ph
-        return { ...ph, id: nextId++ }
-      })
+      // Count how many null-id phases need new IDs
+      const nullPhaseCount = proj.phases.filter(ph => ph.id == null).length
+      let idCounter = prev.nextId
+      const phasesWithIds = proj.phases.map(ph =>
+        ph.id != null ? ph : { ...ph, id: idCounter++ }
+      )
       const projWithIds = { ...proj, phases: phasesWithIds }
+      if (exists) {
+        return {
+          ...prev,
+          projects: prev.projects.map(p => p.id === proj.id ? projWithIds : p),
+          nextId: prev.nextId + nullPhaseCount,
+        }
+      }
       return {
         ...prev,
-        projects: exists
-          ? prev.projects.map(p => p.id === proj.id ? projWithIds : p)
-          : [...prev.projects, { ...projWithIds, id: nextId++ }],
-        nextId,
+        projects: [...prev.projects, { ...projWithIds, id: idCounter++ }],
+        nextId: idCounter,
       }
     })
     setEditingProject(null)
