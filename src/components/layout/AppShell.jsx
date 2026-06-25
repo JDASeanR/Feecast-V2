@@ -14,6 +14,7 @@ import DashboardTab from '../tabs/DashboardTab.jsx'
 import SummaryTab from '../tabs/SummaryTab.jsx'
 import ReportsTab from '../tabs/ReportsTab.jsx'
 import WidgetsTab from '../tabs/WidgetsTab.jsx'
+import UserGuide from './UserGuide.jsx'
 
 const TABS = [
   { id: 'dashboard',     label: 'Dashboard',          icon: 'ti-layout-dashboard' },
@@ -194,6 +195,7 @@ export default function AppShell({ session, store }) {
   const [activeTab, setActiveTab] = useLocalPref('activeTab', 'dashboard')
   const [tabOrder, setTabOrder] = useLocalPref('tabOrder', TABS.map(t => t.id))
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const [dragTab, setDragTab] = useState(null)
 
   const orderedTabs = tabOrder
@@ -319,6 +321,7 @@ export default function AppShell({ session, store }) {
             { label: syncing ? 'Syncing…' : 'Sync', icon: syncing ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSync, disabled: syncing },
             { label: syncingAR ? 'Syncing…' : 'Sync A/R', icon: syncingAR ? 'ti-loader-2 spin' : 'ti-refresh', onClick: doSyncAR, disabled: syncingAR },
             { label: 'Settings', icon: 'ti-settings', onClick: () => setSettingsOpen(true) },
+            { label: 'Help', icon: 'ti-help-circle', onClick: () => setGuideOpen(true) },
           ].map(({ label, icon, onClick, disabled }) => (
             <button key={label} onClick={onClick} disabled={disabled}
               className="inline-flex items-center gap-1 px-2.5 py-1 font-display tracking-ui uppercase transition-colors cursor-pointer"
@@ -470,6 +473,7 @@ export default function AppShell({ session, store }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+      {guideOpen && <UserGuide onClose={() => setGuideOpen(false)} />}
     </div>
   )
 }
