@@ -462,7 +462,7 @@ export default function AppShell({ session, store }) {
       </nav>
 
       {/* Tab content */}
-      <main className="flex-1 min-h-0 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto" style={{ transition: 'padding-right 0.25s', paddingRight: chatOpen ? 360 : 0 }}>
         {activeTab === 'dashboard'
           ? <DashboardTab appState={appState} onNavigate={setActiveTab} />
           : activeTab === 'summary'

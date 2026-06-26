@@ -244,8 +244,6 @@ export default function ChatDrawer({ session, open, onClose, onUnread, onToast, 
 
   return (
     <>
-      {open && <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:9990 }} />}
-
       <div style={{
         position:'fixed', top:0, right:0, bottom:0, zIndex:9991,
         width:360, background:'#F5F5F1',
