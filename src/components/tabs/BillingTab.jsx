@@ -64,23 +64,6 @@ export default function BillingTab({ appState, mutate, session }) {
   const monthlyGoal = settings.billing?.monthlyGoal || 395000
   const hourlyData  = settings.billing?.hourlyByMonth || {}
 
-  // ── Migrate null-id phases once on mount ─────────────────────────────────
-  useEffect(() => {
-    const hasNulls = appState.projects.some(p => p.phases.some(ph => ph.id == null))
-    if (!hasNulls) return
-    mutate(prev => {
-      let nextId = prev.nextId || 9000
-      return {
-        ...prev,
-        projects: prev.projects.map(p => ({
-          ...p,
-          phases: p.phases.map(ph => ph.id != null ? ph : { ...ph, id: nextId++ })
-        })),
-        nextId,
-      }
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Local UI state ────────────────────────────────────────────────────────
   const [filterPM,       setFilterPM]       = useLocalPref('bill.filterPM', 'ALL')
   const [showPast,       setShowPast]        = useLocalPref('bill.showPast', false)
@@ -649,9 +632,9 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
       })()}
 
       {/* Phase rows */}
-      {phases.map(ph => (
+      {phases.map((ph, pi) => (
         <PhaseRow
-          key={ph.id}
+          key={ph.id ?? `ph-${p.id}-${pi}`}
           phase={ph}
           project={p}
           visMonths={visMonths}

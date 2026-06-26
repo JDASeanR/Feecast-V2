@@ -37,12 +37,28 @@ export function useAppState() {
         supabase.from('app_state').select('data').eq('key', 'state').limit(1),
       ])
       const stData = st?.[0]?.data || {}
+      let projects = proj?.[0]?.data || DEFAULT_STATE.projects
+      let nextId   = stData.nextId   || DEFAULT_STATE.nextId
+
+      // Migrate: assign IDs to any project or phase missing them
+      const needsMigration = projects.some(p => p.id == null || p.phases?.some(ph => ph.id == null))
+      if (needsMigration) {
+        projects = projects.map(p => {
+          let pid = p.id ?? nextId++
+          const phases = (p.phases || []).map(ph => ({
+            ...ph,
+            id: ph.id ?? nextId++,
+          }))
+          return { ...p, id: pid, phases }
+        })
+      }
+
       setAppState({
-        projects:      proj?.[0]?.data || DEFAULT_STATE.projects,
+        projects,
         invoices:      inv?.[0]?.data  || DEFAULT_STATE.invoices,
         opportunities: stData.opportunities || DEFAULT_STATE.opportunities,
         settings:      stData.settings      || DEFAULT_STATE.settings,
-        nextId:        stData.nextId         || DEFAULT_STATE.nextId,
+        nextId,
       })
       lastSavedAt.current = Date.now()
     } catch (err) {
