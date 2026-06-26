@@ -70,6 +70,8 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
       s2 + p.filteredPhases.reduce((s3,ph) => s3 + (ph.monthly?.[mk]||0), 0), 0), 0)
   const projectCount = pmOrder.reduce((s,k) => s + Object.values(pmGroups[k]).flat().length, 0)
   const phaseCount   = pmOrder.reduce((s,k) => s + Object.values(pmGroups[k]).flat().reduce((s2,p) => s2 + p.filteredPhases.length, 0), 0)
+  const hourlyVal    = settings.billing?.hourlyByMonth?.[mk] || 0
+  const monthlyTotal = grandTotal + hourlyVal
   const subtitle = `${pm === 'ALL' ? 'All PMs' : 'PM: '+pm} · ${client === 'ALL' ? 'All Clients' : client}`
 
   // Column flex widths (no conf column)
@@ -100,17 +102,17 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
         {/* KPIs */}
         <View style={S.kpiRow}>
           <View style={[S.kpiCard, { borderTopColor:'#BD6439' }]}>
-            <Text style={S.kpiLabel}>Total Allocated</Text>
-            <Text style={[S.kpiValue, { color:'#BD6439' }]}>{fmtK(grandTotal)}</Text>
+            <Text style={S.kpiLabel}>Monthly Total</Text>
+            <Text style={[S.kpiValue, { color:'#BD6439' }]}>{fmtK(monthlyTotal)}</Text>
           </View>
           <View style={[S.kpiCard, { borderTopColor:'#3D3935' }]}>
             <Text style={S.kpiLabel}>Monthly Goal</Text>
             <Text style={[S.kpiValue, { color:'#3D3935' }]}>{fmtK(monthlyGoal)}</Text>
           </View>
-          <View style={[S.kpiCard, { borderTopColor: grandTotal >= monthlyGoal ? '#2d7a3a' : '#c0392b' }]}>
+          <View style={[S.kpiCard, { borderTopColor: monthlyTotal >= monthlyGoal ? '#2d7a3a' : '#c0392b' }]}>
             <Text style={S.kpiLabel}>vs. Goal</Text>
-            <Text style={[S.kpiValue, { color: grandTotal >= monthlyGoal ? '#2d7a3a' : '#c0392b' }]}>
-              {grandTotal >= monthlyGoal ? '+' : ''}{fmtK(grandTotal - monthlyGoal)}
+            <Text style={[S.kpiValue, { color: monthlyTotal >= monthlyGoal ? '#2d7a3a' : '#c0392b' }]}>
+              {monthlyTotal >= monthlyGoal ? '+' : ''}{fmtK(monthlyTotal - monthlyGoal)}
             </Text>
           </View>
           <View style={[S.kpiCard, { borderTopColor:'#736F4C' }]}>
@@ -227,22 +229,36 @@ export default function MonthlyBillingPDF({ appState, pm, client, mk, logo }) {
           )
         })}
 
-        {/* Grand total */}
+        {/* FF subtotal */}
         <View style={S.grandTotalRow}>
           <Text style={{ flex:1, fontSize:9, fontFamily:'Helvetica-Bold', color:'#F5F5F1' }}>
-            TOTAL — {projectCount} project{projectCount !== 1 ? 's' : ''} · {phaseCount} phase{phaseCount !== 1 ? 's' : ''}
+            FF SUBTOTAL — {projectCount} project{projectCount !== 1 ? 's' : ''} · {phaseCount} phase{phaseCount !== 1 ? 's' : ''}
           </Text>
           <Text style={{ fontSize:10, fontFamily:'Helvetica-Bold', color:'#F5F5F1' }}>{fmt(grandTotal)}</Text>
+        </View>
+
+        {/* Hourly / reimbursable line */}
+        {hourlyVal > 0 && (
+          <View style={{ flexDirection:'row', paddingVertical:5, paddingHorizontal:8, backgroundColor:'#ECEAE3', borderBottomWidth:0.5, borderBottomColor:'rgba(61,57,53,0.12)' }}>
+            <Text style={{ flex:1, fontSize:8, color:'#736F4C', fontFamily:'Helvetica-Bold' }}>Hourly / Reimbursable</Text>
+            <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:'#736F4C' }}>{fmt(hourlyVal)}</Text>
+          </View>
+        )}
+
+        {/* Monthly total */}
+        <View style={{ flexDirection:'row', paddingVertical:7, paddingHorizontal:8, backgroundColor:'#2d2b28', borderRadius:3, marginTop:2 }}>
+          <Text style={{ flex:1, fontSize:10, fontFamily:'Helvetica-Bold', color:'#F5F5F1', letterSpacing:0.5 }}>MONTHLY TOTAL</Text>
+          <Text style={{ fontSize:11, fontFamily:'Helvetica-Bold', color: monthlyTotal >= monthlyGoal ? '#6ee88a' : '#f8c4a0' }}>{fmt(monthlyTotal)}</Text>
         </View>
 
         {/* vs goal bar */}
         <View style={{ flexDirection:'row', alignItems:'center', marginTop:6, marginRight:0 }}>
           <Text style={{ fontSize:8, color:'#736F4C', marginRight:8 }}>vs. goal</Text>
           <View style={{ flex:1, height:4, backgroundColor:'#ECEAE3', borderRadius:2 }}>
-            <View style={{ height:4, borderRadius:2, width:Math.min(100,grandTotal/monthlyGoal*100)+'%', backgroundColor:grandTotal>=monthlyGoal?'#2d7a3a':'#BD6439' }} />
+            <View style={{ height:4, borderRadius:2, width:Math.min(100,monthlyTotal/monthlyGoal*100)+'%', backgroundColor:monthlyTotal>=monthlyGoal?'#2d7a3a':'#BD6439' }} />
           </View>
-          <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:grandTotal>=monthlyGoal?'#2d7a3a':'#BD6439', marginLeft:8 }}>
-            {Math.round(grandTotal/monthlyGoal*100)}% of {fmtK(monthlyGoal)} goal
+          <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:monthlyTotal>=monthlyGoal?'#2d7a3a':'#BD6439', marginLeft:8 }}>
+            {Math.round(monthlyTotal/monthlyGoal*100)}% of {fmtK(monthlyGoal)} goal
           </Text>
         </View>
 
