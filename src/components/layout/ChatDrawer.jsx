@@ -3,9 +3,27 @@ import { supabase } from '../../lib/supabase'
 
 const BADGE_COLORS = ['#BD6439','#736F4C','#2563EB','#16A34A','#8E44AD','#c0392b']
 
+// Shared AudioContext — created once on first user gesture so Safari allows it
+let _audioCtx = null
+function getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  return _audioCtx
+}
+// Unlock on any click/keydown so Safari resumes the context
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    try { getAudioCtx().resume() } catch {}
+  }
+  window.addEventListener('click', unlock, { once: false, passive: true })
+  window.addEventListener('keydown', unlock, { once: false, passive: true })
+}
+
 function playChime(isMention = false) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = getAudioCtx()
+    if (ctx.state === 'suspended') { ctx.resume() }
     const gain = ctx.createGain()
     gain.connect(ctx.destination)
     const notes = isMention ? [880, 1100] : [660]
