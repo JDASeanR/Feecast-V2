@@ -480,7 +480,9 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
       ${clientBlocks}
       <tr><td colspan="6" style="height:10px;background:#fff"></td></tr>`}).join('')
 
-  const vsGoal = grandTotal - monthlyGoal
+  const hourlyVal    = settings.billing?.hourlyByMonth?.[mk] || 0
+  const monthlyTotal = grandTotal + hourlyVal
+  const vsGoal = monthlyTotal - monthlyGoal
   const logo = appState.settings?.firm?.logo
   const dt = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
   const graphiteHeader = `
@@ -501,21 +503,33 @@ function buildMonthlyBillingReport(appState, pm, client, mk, template) {
   return PAGE_WRAP(`
     ${graphiteHeader}
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-      ${kpiCard('Total Allocated',fmt(grandTotal),'#BD6439')}
+      ${kpiCard('Monthly Total',fmt(monthlyTotal),'#BD6439')}
       ${kpiCard('Monthly Goal',fmt(monthlyGoal),'#3D3935')}
       ${kpiCard('vs. Goal',(vsGoal>=0?'+':'')+fmt(vsGoal),vsGoal>=0?'#3a7a4a':'#c0392b')}
-      ${kpiCard('% of Goal',Math.round(grandTotal/monthlyGoal*100)+'%',grandTotal>=monthlyGoal?'#3a7a4a':'#c0392b')}
+      ${kpiCard('% of Goal',Math.round(monthlyTotal/monthlyGoal*100)+'%',monthlyTotal>=monthlyGoal?'#3a7a4a':'#c0392b')}
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#3D3935;color:#F5F5F1">
         ${['Project / Phase','Scope','Phase Fee','Remaining',monthLabel.split(' ')[0]+' Alloc','% Alloc'].map((h,i)=>`<th style="text-align:${i>=2?'right':i===1?'center':'left'};padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em">${h}</th>`).join('')}
       </tr></thead>
       <tbody>${pmBlocks||`<tr><td colspan="6" style="padding:20px;text-align:center;color:#a09c85">No allocations for ${monthLabel}</td></tr>`}</tbody>
-      <tfoot><tr style="background:#3D3935;color:#F5F5F1">
-        <td colspan="4" style="padding:8px;font-weight:700;font-size:12px">TOTAL</td>
-        <td style="padding:8px;text-align:right;font-weight:700;font-size:14px;color:#f8c4a0">${fmt(grandTotal)}</td>
-        <td></td>
-      </tr></tfoot>
+      <tfoot>
+        <tr style="background:#ECEAE3">
+          <td colspan="4" style="padding:6px 8px;font-weight:700;font-size:11px;color:#3D3935">FF Subtotal</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:700;font-size:12px;color:#3D3935">${fmt(grandTotal)}</td>
+          <td></td>
+        </tr>
+        ${hourlyVal > 0 ? `<tr style="background:#ECEAE3;border-top:1px solid #dedad0">
+          <td colspan="4" style="padding:6px 8px;font-size:11px;color:#736F4C;font-weight:700">Hourly / Reimbursable</td>
+          <td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:#736F4C">${fmt(hourlyVal)}</td>
+          <td></td>
+        </tr>` : ''}
+        <tr style="background:#3D3935;color:#F5F5F1">
+          <td colspan="4" style="padding:8px;font-weight:700;font-size:12px;letter-spacing:.04em">MONTHLY TOTAL</td>
+          <td style="padding:8px;text-align:right;font-weight:700;font-size:14px;color:${monthlyTotal>=monthlyGoal?'#6ee88a':'#f8c4a0'}">${fmt(monthlyTotal)}</td>
+          <td></td>
+        </tr>
+      </tfoot>
     </table>
     ${reportFooter()}`)
 }
