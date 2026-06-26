@@ -120,6 +120,20 @@ export default function ProjectsTab({ appState, mutate }) {
   })
 
   // ── Mutate helpers ────────────────────────────────────────────────────────
+  const addClient = useCallback(client => {
+    mutate(prev => {
+      const existing = prev.settings.clients || []
+      const newId = Math.max(0, ...existing.map(c => c.id || 0)) + 1
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          clients: [...existing, { ...client, id: newId, active: true }]
+        }
+      }
+    })
+  }, [mutate])
+
   const saveProject = useCallback(proj => {
     mutate(prev => {
       const exists = prev.projects.find(p => p.id === proj.id)
@@ -383,6 +397,7 @@ export default function ProjectsTab({ appState, mutate }) {
           settings={settings}
           projects={projects}
           onSave={saveProject}
+          onAddClient={addClient}
           onClose={() => setEditingProject(null)}
         />
       )}
@@ -764,7 +779,7 @@ function AllocModal({ project: p, phase: ph, onSave, onClose }) {
 }
 
 // ── ProjectModal ──────────────────────────────────────────────────────────────
-function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
+function ProjectModal({ project: ex, settings, projects, onSave, onAddClient, onClose }) {
   const pmList    = (settings.pms || []).map(p => p.name)
   const scopeList = settings.scopeTypes || []
   const statusList = settings.statusTypes || []
@@ -779,6 +794,9 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
     flag: false, notes: '', phases: [defaultPhase]
   })
   const [allocPhaseIdx, setAllocPhaseIdx] = useState(null)
+  const [addingClient, setAddingClient] = useState(false)
+  const [newClientName, setNewClientName] = useState('')
+  const [newClientParent, setNewClientParent] = useState('')
 
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const setPhase = (i, k, v) => setForm(p => ({
@@ -790,6 +808,16 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
 
   const clientOptions = clients.filter(c => !c.parent)
   const clientChildren = clients.filter(c => c.parent)
+
+  const confirmNewClient = () => {
+    const name = newClientName.trim()
+    if (!name) return
+    onAddClient({ name, parent: newClientParent || null })
+    setField('client', name)
+    setAddingClient(false)
+    setNewClientName('')
+    setNewClientParent('')
+  }
   const totalFee = form.phases.reduce((s, ph) => s + (ph.fee || 0), 0)
 
   return (
@@ -807,19 +835,49 @@ function ProjectModal({ project: ex, settings, projects, onSave, onClose }) {
         </div>
         <div className="col-span-2">
           <label className="block text-2xs text-olive uppercase tracking-wider mb-1">Client</label>
-          <select value={form.client} onChange={e => setField('client', e.target.value)} className="select text-xs w-full">
-            <option value="">— Select client —</option>
-            {clientOptions.map(c => {
-              const kids = clientChildren.filter(k => k.parent === c.id || k.parent === c.name)
-              if (kids.length) return (
-                <optgroup key={c.id} label={c.name}>
-                  <option value={c.name}>{c.name} (Corporate)</option>
-                  {kids.map(k => <option key={k.id} value={k.name}>↳ {k.name}</option>)}
-                </optgroup>
-              )
-              return <option key={c.id} value={c.name}>{c.name}</option>
-            })}
-          </select>
+          {addingClient ? (
+            <div className="space-y-1.5">
+              <input
+                autoFocus
+                placeholder="New client name"
+                value={newClientName}
+                onChange={e => setNewClientName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') confirmNewClient(); if (e.key === 'Escape') setAddingClient(false) }}
+                className="input text-xs w-full"
+              />
+              <select value={newClientParent} onChange={e => setNewClientParent(e.target.value)} className="select text-xs w-full">
+                <option value="">— No parent (top-level) —</option>
+                {clientOptions.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+              <div className="flex gap-1">
+                <button onClick={confirmNewClient} className="btn btn-primary text-xs"><i className="ti ti-check" /> Add client</button>
+                <button onClick={() => setAddingClient(false)} className="btn text-xs">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <select
+              value={form.client}
+              onChange={e => {
+                if (e.target.value === '__add__') { setAddingClient(true); setNewClientName(''); setNewClientParent('') }
+                else setField('client', e.target.value)
+              }}
+              className="select text-xs w-full"
+            >
+              <option value="">— Select client —</option>
+              {clientOptions.map(c => {
+                const kids = clientChildren.filter(k => k.parent === c.id || k.parent === c.name)
+                if (kids.length) return (
+                  <optgroup key={c.id} label={c.name}>
+                    <option value={c.name}>{c.name} (Corporate)</option>
+                    {kids.map(k => <option key={k.id} value={k.name}>↳ {k.name}</option>)}
+                  </optgroup>
+                )
+                return <option key={c.id} value={c.name}>{c.name}</option>
+              })}
+              <option disabled>──────────</option>
+              <option value="__add__">+ Add new client…</option>
+            </select>
+          )}
         </div>
         <div className="col-span-2">
           <label className="block text-2xs text-olive uppercase tracking-wider mb-1">Project name</label>
