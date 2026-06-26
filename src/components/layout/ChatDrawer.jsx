@@ -3,6 +3,27 @@ import { supabase } from '../../lib/supabase'
 
 const BADGE_COLORS = ['#BD6439','#736F4C','#2563EB','#16A34A','#8E44AD','#c0392b']
 
+function playChime(isMention = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.connect(ctx.destination)
+    const notes = isMention ? [880, 1100] : [660]
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      osc.connect(gain)
+      const t = ctx.currentTime + i * 0.12
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
+      osc.start(t)
+      osc.stop(t + 0.35)
+    })
+  } catch {}
+}
+
 function hashColor(email) {
   let h = 0
   for (let i = 0; i < (email||'').length; i++) h = (h * 31 + email.charCodeAt(i)) & 0xffffffff
@@ -130,11 +151,12 @@ export default function ChatDrawer({ session, open, onClose, onUnread, onToast, 
           return [...prev, payload.new]
         })
         if (payload.new.user_email !== myEmail) {
+          const isMention = payload.new.text.includes('@' + myEmail.split('@')[0])
+          playChime(isMention)
           if (!open) {
             onToast?.(payload.new)
           } else {
             // Drawer is open — only ping unread if it's a mention
-            const isMention = payload.new.text.includes('@' + myEmail.split('@')[0])
             if (isMention) onToast?.(payload.new)
           }
         }
