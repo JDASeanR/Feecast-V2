@@ -165,7 +165,7 @@ export default function BillingTab({ appState, mutate, session }) {
         ...p,
         phases: p.phases.map(ph => {
           if (ph.id !== phId) return ph
-          return { ...ph, holdStatus: ph.holdStatus === val ? null : val }
+          return { ...ph, holdStatus: val || null }
         })
       }))
     }))
@@ -655,7 +655,9 @@ const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-cloc
 
 function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf, setHoldStatus, setFlag }) {
   const [holdOpen, setHoldOpen] = useState(false)
+  const [holdPos, setHoldPos]   = useState({ top: 0, left: 0 })
   const holdRef = useRef(null)
+  const holdBtnRef = useRef(null)
   const rem      = phRem(ph)
   const billedOut = rem <= 0
   const onHold   = !!ph.holdStatus
@@ -670,7 +672,12 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
 
   useEffect(() => {
     if (!holdOpen) return
-    const h = e => { if (holdRef.current && !holdRef.current.contains(e.target)) setHoldOpen(false) }
+    const h = e => {
+      if (
+        holdBtnRef.current && !holdBtnRef.current.contains(e.target) &&
+        holdRef.current && !holdRef.current.contains(e.target)
+      ) setHoldOpen(false)
+    }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [holdOpen])
@@ -689,7 +696,7 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
       </td>
       {/* Name / alloc status */}
       <td className="sticky left-0 bg-white px-2 py-1 border-b border-sand-2"
-        style={{ minWidth: COL_NAME, paddingLeft: indent, zIndex: holdOpen ? 100 : 10 }}>
+        style={{ minWidth: COL_NAME, paddingLeft: indent, zIndex: 10 }}>
         <div className="truncate text-xs text-olive">{ph.name}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-2xs text-dark-3">{ph.scope}</span>
@@ -706,10 +713,17 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
           {!billedOut && (
             <>
               {!onHold && <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />}
-              <div ref={holdRef} style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }}>
                 <button
+                  ref={holdBtnRef}
                   title="Phase hold status"
-                  onClick={() => setHoldOpen(v => !v)}
+                  onClick={() => {
+                    if (!holdOpen) {
+                      const r = holdBtnRef.current?.getBoundingClientRect()
+                      if (r) setHoldPos({ top: r.top, left: r.left })
+                    }
+                    setHoldOpen(v => !v)
+                  }}
                   className="flex items-center justify-center rounded transition-colors"
                   style={{
                     width: 22, height: 18, fontSize: 13,
@@ -721,42 +735,52 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
                 >
                   <i className={clsx('ti', onHold ? HOLD_ICONS[ph.holdStatus] : 'ti-activity')} />
                 </button>
-                {holdOpen && (
-                  <div style={{
-                    position: 'absolute', bottom: '100%', left: 0, zIndex: 9999,
-                    background: '#fff', border: '1px solid rgba(61,57,53,0.2)',
-                    borderRadius: 6, padding: '4px 0', minWidth: 200,
-                    boxShadow: '0 8px 30px rgba(61,57,53,0.3)',
-                    marginBottom: 4,
-                  }}>
-                    <div style={{ fontSize: 10, color: '#736F4C', padding: '4px 12px 6px', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid rgba(61,57,53,0.08)' }}>Phase Status</div>
-                    {[
-                      { val: null, label: 'Active (no hold)', icon: 'ti-circle-check', color: '#2d7a3a' },
-                      { val: 'not-authorized', label: 'Not Authorized', icon: 'ti-lock', color: '#6b7280' },
-                      { val: 'awaiting-approval', label: 'Awaiting Approval', icon: 'ti-clock', color: '#b45309' },
-                    ].map(opt => (
-                      <button
-                        key={opt.val || 'active'}
-                        onClick={() => {
-                          if (opt.val === null && ph.holdStatus) setHoldStatus(ph.id, ph.holdStatus)
-                          else if (opt.val) setHoldStatus(ph.id, opt.val)
-                          setHoldOpen(false)
-                        }}
-                        className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors"
-                        style={{
-                          background: (ph.holdStatus || null) === opt.val ? 'rgba(61,57,53,0.08)' : 'transparent',
-                          color: opt.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                          fontWeight: (ph.holdStatus || null) === opt.val ? 600 : 400,
-                        }}
-                      >
-                        <i className={clsx('ti', opt.icon)} style={{ fontSize: 14 }} />
-                        {opt.label}
-                        {(ph.holdStatus || null) === opt.val && <i className="ti ti-check" style={{ fontSize: 12, marginLeft: 'auto' }} />}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
+              {holdOpen && createPortal(
+                <div
+                  ref={holdRef}
+                  style={{
+                    position: 'fixed',
+                    top: holdPos.top - 4,
+                    left: holdPos.left,
+                    transform: 'translateY(-100%)',
+                    zIndex: 99999,
+                    background: '#fff',
+                    border: '1px solid rgba(61,57,53,0.2)',
+                    borderRadius: 6,
+                    padding: '4px 0',
+                    minWidth: 200,
+                    boxShadow: '0 8px 30px rgba(61,57,53,0.3)',
+                  }}
+                >
+                  <div style={{ fontSize: 10, color: '#736F4C', padding: '4px 12px 6px', letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: '1px solid rgba(61,57,53,0.08)' }}>Phase Status</div>
+                  {[
+                    { val: null, label: 'Active (no hold)', icon: 'ti-circle-check', color: '#2d7a3a' },
+                    { val: 'not-authorized', label: 'Not Authorized', icon: 'ti-lock', color: '#6b7280' },
+                    { val: 'awaiting-approval', label: 'Awaiting Approval', icon: 'ti-clock', color: '#b45309' },
+                  ].map(opt => (
+                    <button
+                      key={opt.val || 'active'}
+                      onClick={() => {
+                        if (opt.val === null) setHoldStatus(ph.id, null)
+                        else setHoldStatus(ph.id, opt.val)
+                        setHoldOpen(false)
+                      }}
+                      className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{
+                        background: (ph.holdStatus || null) === opt.val ? 'rgba(61,57,53,0.08)' : 'transparent',
+                        color: opt.color, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                        fontWeight: (ph.holdStatus || null) === opt.val ? 600 : 400,
+                      }}
+                    >
+                      <i className={clsx('ti', opt.icon)} style={{ fontSize: 14 }} />
+                      {opt.label}
+                      {(ph.holdStatus || null) === opt.val && <i className="ti ti-check" style={{ fontSize: 12, marginLeft: 'auto' }} />}
+                    </button>
+                  ))}
+                </div>,
+                document.body
+              )}
             </>
           )}
         </div>
