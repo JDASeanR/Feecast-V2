@@ -93,7 +93,7 @@ export default function OpportunitiesTab({ appState, mutate }) {
         ...prev,
         opportunities: exists
           ? prev.opportunities.map(o => o.id === opp.id ? opp : o)
-          : [...prev.opportunities, { ...opp, id: prev.nextId, monthly: opp.monthly || blankMonthly() }],
+          : [...prev.opportunities, { ...opp, id: prev.nextId, monthly: opp.monthly || blankMonthly(), createdAt: new Date().toISOString() }],
         nextId: exists ? prev.nextId : prev.nextId + 1,
       }
     })

@@ -153,7 +153,7 @@ export default function ProjectsTab({ appState, mutate }) {
       }
       return {
         ...prev,
-        projects: [...prev.projects, { ...projWithIds, id: idCounter++ }],
+        projects: [...prev.projects, { ...projWithIds, id: idCounter++, createdAt: new Date().toISOString() }],
         nextId: idCounter,
       }
     })

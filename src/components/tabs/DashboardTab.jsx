@@ -282,8 +282,14 @@ export default function DashboardTab({ appState, onNavigate }) {
           </div>
         </div>
 
+        {/* Right column: Recent Activity + A/R */}
+        <div style={{ display:'flex', flexDirection:'column', gap:10, minHeight:0 }}>
+
+        {/* Recent Activity */}
+        <RecentActivity projects={projects} opportunities={opportunities} onNavigate={onNavigate} />
+
         {/* A/R */}
-        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', cursor:'pointer', display:'flex', flexDirection:'column' }} onClick={()=>onNavigate('ar')}>
+        <div style={{ background:'#F5F5F1', borderRadius:5, border:'1px solid rgba(61,57,53,0.1)', padding:'14px 16px', cursor:'pointer', display:'flex', flexDirection:'column', flex:1, minHeight:0 }} onClick={()=>onNavigate('ar')}>
           <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:10, flexShrink:0 }}>
             A/R Collections <span style={{ color:'#BD6439' }}>↗</span>
           </div>
@@ -321,13 +327,126 @@ export default function DashboardTab({ appState, onNavigate }) {
             </div>
           </div>
         </div>
+
+        </div>{/* end right column */}
       </div>
+    </div>
+  )
+}
+
+// ── Recent Activity ───────────────────────────────────────────────────────────
+function RecentActivity({ projects, opportunities, onNavigate }) {
+  const DAYS = 7
+  const cutoff = Date.now() - DAYS * 86400000
+
+  const recentProjects = projects
+    .filter(p => p.createdAt && new Date(p.createdAt).getTime() >= cutoff)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5)
+
+  const recentOpps = opportunities
+    .filter(o => o.createdAt && new Date(o.createdAt).getTime() >= cutoff)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5)
+
+  const total = recentProjects.length + recentOpps.length
+
+  const timeAgo = iso => {
+    const hrs = Math.floor((Date.now() - new Date(iso).getTime()) / 3600000)
+    if (hrs < 1) return 'just now'
+    if (hrs < 24) return `${hrs}h ago`
+    return `${Math.floor(hrs / 24)}d ago`
+  }
+
+  // Merge and sort all items together by date for a unified feed
+  const allItems = [
+    ...recentProjects.map(p => ({ type: 'project', data: p })),
+    ...recentOpps.map(o => ({ type: 'opp', data: o })),
+  ].sort((a, b) => new Date(b.data.createdAt) - new Date(a.data.createdAt))
+
+  return (
+    <div style={{
+      background: '#ECEAE3',
+      borderRadius: 5,
+      border: '1px solid rgba(61,57,53,0.1)',
+      borderTop: '2px solid #BD6439',
+      padding: '12px 14px',
+      flexShrink: 0,
+    }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+          <LiveDot />
+          <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#3D3935', fontWeight:600 }}>Recent Activity</div>
+        </div>
+        <div style={{ fontSize:10, color:'rgba(61,57,53,0.4)', letterSpacing:'0.08em', textTransform:'uppercase' }}>last {DAYS} days</div>
+      </div>
+
+      {total === 0 ? (
+        <div style={{ fontSize:11, color:'rgba(61,57,53,0.4)', fontStyle:'italic', padding:'4px 0' }}>Nothing added in the last {DAYS} days</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column' }}>
+          {allItems.map(({ type, data }) => {
+            const isProject = type === 'project'
+            const fee = isProject ? pFee(data) : (data.fee || 0)
+            return (
+              <div
+                key={data.id}
+                onClick={() => onNavigate(isProject ? 'projects' : 'opportunities')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '5px 0',
+                  borderBottom: '1px solid rgba(61,57,53,0.08)',
+                  cursor: 'pointer',
+                }}
+              >
+                {/* Type pill */}
+                <span style={{
+                  fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  fontWeight: 600, flexShrink: 0,
+                  padding: '2px 5px', borderRadius: 3,
+                  background: isProject ? 'rgba(189,100,57,0.12)' : 'rgba(115,111,76,0.12)',
+                  color: isProject ? '#BD6439' : '#736F4C',
+                }}>
+                  {isProject ? 'Project' : 'Opp'}
+                </span>
+
+                {/* Name */}
+                <div style={{ flex:1, minWidth:0, overflow:'hidden' }}>
+                  <span style={{ fontSize:11, color:'#3D3935', fontWeight:500 }}>{data.client || '—'}</span>
+                  <span style={{ fontSize:11, color:'#736F4C' }}> · </span>
+                  <span style={{ fontSize:11, color:'#736F4C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{data.project || '—'}</span>
+                </div>
+
+                {/* Fee + time */}
+                <div style={{ display:'flex', gap:7, flexShrink:0, alignItems:'baseline' }}>
+                  {fee > 0 && <span style={{ fontSize:11, color:'#3D3935', fontWeight:500 }}>{fmtK(fee)}</span>}
+                  <span style={{ fontSize:10, color:'rgba(61,57,53,0.4)' }}>{timeAgo(data.createdAt)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const Sep = () => <div style={{ width:1, height:36, background:'rgba(245,245,241,0.12)', flexShrink:0 }} />
+
+function LiveDot() {
+  return (
+    <span style={{ position:'relative', display:'inline-flex', width:8, height:8, flexShrink:0 }}>
+      <span style={{
+        position:'absolute', inset:0, borderRadius:'50%', background:'#4ade80', opacity:0.6,
+        animation:'ping 1.4s cubic-bezier(0,0,0.2,1) infinite',
+      }} />
+      <span style={{ position:'relative', borderRadius:'50%', width:8, height:8, background:'#22c55e' }} />
+      <style>{`@keyframes ping { 0%{transform:scale(1);opacity:0.6} 75%,100%{transform:scale(2);opacity:0} }`}</style>
+    </span>
+  )
+}
 
 function HeroKPI({ label, value, sub, accent }) {
   return (

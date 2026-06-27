@@ -53,6 +53,23 @@ export function useAppState() {
         })
       }
 
+      // Migrate: stamp only the correct recently-added projects, clear any wrong stamps
+      const recentNames = ['Lippi Ranch', 'ParkeBridge', '26044 E']
+      const match = p => recentNames.findIndex(n => (p.project || '').toLowerCase().includes(n.toLowerCase()))
+      const hasWrongStamps = projects.some(p => p.createdAt && match(p) < 0)
+      const missingStamps  = projects.some(p => !p.createdAt && match(p) >= 0)
+      if (hasWrongStamps || missingStamps) {
+        const now = Date.now()
+        projects = projects.map(p => {
+          const rank = match(p)
+          if (rank >= 0) {
+            return { ...p, createdAt: p.createdAt || new Date(now - rank * 36 * 3600000).toISOString() }
+          }
+          const { createdAt, ...rest } = p
+          return rest
+        })
+      }
+
       setAppState({
         projects,
         invoices:      inv?.[0]?.data  || DEFAULT_STATE.invoices,
