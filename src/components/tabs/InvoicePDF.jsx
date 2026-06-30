@@ -20,6 +20,19 @@ const fmtP = n => Math.round(n || 0) + '%'
 // Column flex weights
 const C = { service: 2.6, contract: 1, prev: 1.15, cur: 1.15, total: 1.15, rem: 1.15 }
 
+// Density tiers: tighten spacing when phase count grows to stay on one page
+//   tier 0 (≤5 phases):  full size
+//   tier 1 (6-8):        slight compact
+//   tier 2 (9-12):       medium compact
+//   tier 3 (>12):        tight
+const DENSITY = [
+  // phPadV pillH  phFsz pctFsz logoSz infoMB metaMB divMY thPadV totPadV sumMT sumGap noteMT barH progMB
+  { phPadV: 6, pillH: 20, phFsz: 8.5, pctFsz: 7,   logoSz: 112, infoMB: 14, metaMB: 12, divMY: 10, thPadV: 5, totPadV: 7, sumMT: 14, sumGap: 18, noteMT: 12, barH: 16, progMB: 10 },
+  { phPadV: 4, pillH: 17, phFsz: 8,   pctFsz: 6.5, logoSz: 104, infoMB: 10, metaMB: 8,  divMY: 8,  thPadV: 4, totPadV: 5, sumMT: 10, sumGap: 14, noteMT: 8,  barH: 14, progMB: 8  },
+  { phPadV: 2, pillH: 14, phFsz: 7.5, pctFsz: 6,   logoSz: 96,  infoMB: 8,  metaMB: 6,  divMY: 6,  thPadV: 4, totPadV: 4, sumMT: 7,  sumGap: 10, noteMT: 6,  barH: 12, progMB: 6  },
+  { phPadV: 1, pillH: 12, phFsz: 7,   pctFsz: 5.5, logoSz: 88,  infoMB: 6,  metaMB: 4,  divMY: 5,  thPadV: 3, totPadV: 3, sumMT: 5,  sumGap: 8,  noteMT: 4,  barH: 10, progMB: 4  },
+]
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
@@ -34,22 +47,15 @@ const styles = StyleSheet.create({
   // ── Header ──
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   headerLine: { flex: 1, height: 1.5, backgroundColor: T },
-  logo: { width: 112, height: 112, marginHorizontal: 14 },
 
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   infoLeft: { width: 160 },
-  infoCenter: { flex: 1, alignItems: 'center' },
+  infoCenter: { flex: 1 },
   infoRight: { width: 150, alignItems: 'flex-end' },
   infoAddr: { fontSize: 6.5, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.1, lineHeight: 1.6 },
-  infoFirmName: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.6, color: D, textAlign: 'center' },
-  infoFirmSub: { fontSize: 7, letterSpacing: 2.5, color: D, marginTop: 2 },
-
-  divider: { height: 0.5, backgroundColor: '#dedad0', marginVertical: 10 },
 
   // ── Bill To / Invoice Meta ──
-  billMetaRow: { flexDirection: 'row', marginBottom: 12 },
   billToCol: { flex: 1, paddingRight: 12 },
-
   sectionLabel: { fontSize: 7, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 1.2, marginBottom: 4 },
   billToName: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: D, marginBottom: 3, lineHeight: 1.3 },
   billToText: { fontSize: 8, color: D, lineHeight: 1.55 },
@@ -65,28 +71,25 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, marginBottom: 7 },
 
   // ── Phase table ──
-  tableHead: { flexDirection: 'row', backgroundColor: D, paddingVertical: 5, paddingHorizontal: 6, marginBottom: 0 },
+  tableHead: { flexDirection: 'row', backgroundColor: D, paddingHorizontal: 6 },
   thCell: { fontSize: 6.5, color: '#ffffff', fontFamily: 'Helvetica-Bold', letterSpacing: 0.4 },
   thCellC: { fontSize: 6.5, color: '#ffffff', fontFamily: 'Helvetica-Bold', letterSpacing: 0.4, textAlign: 'center' },
 
-  phRow: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: 'rgba(61,57,53,0.1)', alignItems: 'center', backgroundColor: '#ffffff' },
-  phRowAlt: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: 'rgba(61,57,53,0.1)', alignItems: 'center', backgroundColor: W },
-  totalRow: { flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 6, backgroundColor: S, borderTopWidth: 1.5, borderTopColor: D, alignItems: 'center' },
+  phRow:    { flexDirection: 'row', paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: 'rgba(61,57,53,0.1)', alignItems: 'center', backgroundColor: '#ffffff' },
+  phRowAlt: { flexDirection: 'row', paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: 'rgba(61,57,53,0.1)', alignItems: 'center', backgroundColor: W },
+  totalRow: { flexDirection: 'row', paddingHorizontal: 6, backgroundColor: S, borderTopWidth: 1.5, borderTopColor: D, alignItems: 'center' },
 
-  pill: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 7, flexShrink: 0 },
   pillTxt: { fontSize: 5.5, color: '#ffffff', fontFamily: 'Helvetica-Bold', letterSpacing: 0.2 },
-  phName: { fontSize: 8.5, flex: 1 },
 
   valCell: { alignItems: 'center' },
-  valPct: { fontSize: 7, color: O },
-  valPctOrange: { fontSize: 7, color: T },
-  valPctGreen: { fontSize: 7, color: '#2D6B4A' },
-  valAmt: { fontSize: 8.5, fontFamily: 'Helvetica-Bold' },
-  valAmtOrange: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: T },
-  valAmtGreen: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#2D6B4A' },
+  valPct: { color: O },
+  valPctOrange: { color: T },
+  valPctGreen: { color: '#2D6B4A' },
+  valAmt: { fontFamily: 'Helvetica-Bold' },
+  valAmtOrange: { fontFamily: 'Helvetica-Bold', color: T },
+  valAmtGreen: { fontFamily: 'Helvetica-Bold', color: '#2D6B4A' },
 
   // ── Summary + Progress ──
-  summaryRow: { flexDirection: 'row', marginTop: 14, gap: 18 },
   summaryLeft: { flex: 1 },
   summaryRight: { flex: 1 },
 
@@ -100,8 +103,6 @@ const styles = StyleSheet.create({
   summaryValOrange: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: T },
   summarySep: { borderTopWidth: 0.5, borderTopColor: D, marginVertical: 3 },
 
-  progressBar: { flexDirection: 'row', height: 16, marginBottom: 8, borderRadius: 2 },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
   progressItem: { alignItems: 'center' },
   progPct: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
   progAmt: { fontSize: 6.5, color: O },
@@ -114,7 +115,6 @@ const styles = StyleSheet.create({
   dueDateValue: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: D },
 
   // ── Notes ──
-  notesSection: { marginTop: 12, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: S },
   notesTitle: { fontSize: 7, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.8, marginBottom: 3 },
   notesText: { fontSize: 7.5, color: D, lineHeight: 1.5 },
 
@@ -141,10 +141,15 @@ export default function InvoicePDF({ data }) {
     totalRem, totalRemPct,
   } = totals
 
+  // Pick density tier based on phase count to keep invoice on one page
+  const n = lineItems.length
+  const den = DENSITY[n <= 5 ? 0 : n <= 8 ? 1 : n <= 12 ? 2 : 3]
+  const { phPadV, pillH, phFsz, pctFsz, logoSz, infoMB, metaMB, divMY, thPadV, totPadV, sumMT, sumGap, noteMT, barH, progMB } = den
+
   // Progress bar flex values — need at least 0.1 to avoid render issues
-  const prevFlex  = Math.max(0.1, totalPrevPct)
-  const curFlex   = Math.max(0.1, totalCurPct)
-  const remFlex   = Math.max(0.1, Math.max(0, 100 - totalBilledPct))
+  const prevFlex = Math.max(0.1, totalPrevPct)
+  const curFlex  = Math.max(0.1, totalCurPct)
+  const remFlex  = Math.max(0.1, Math.max(0, 100 - totalBilledPct))
 
   return (
     <Document>
@@ -153,13 +158,13 @@ export default function InvoicePDF({ data }) {
         {/* ── Header: lines + logo ── */}
         <View style={styles.headerRow}>
           <View style={styles.headerLine} />
-          {logo && <Image src={logo} style={styles.logo} />}
-          {!logo && <View style={{ width: 70, height: 70, marginHorizontal: 16 }} />}
+          {logo && <Image src={logo} style={{ width: logoSz, height: logoSz, marginHorizontal: 14 }} />}
+          {!logo && <View style={{ width: logoSz, height: logoSz, marginHorizontal: 14 }} />}
           <View style={styles.headerLine} />
         </View>
 
-        {/* Firm info row — logo already contains the firm name/tagline */}
-        <View style={styles.infoRow}>
+        {/* Firm info row — firm name/tagline are part of the logo lockup */}
+        <View style={[styles.infoRow, { marginBottom: infoMB }]}>
           <View style={styles.infoLeft}>
             {firm.address1 ? <Text style={styles.infoAddr}>{firm.address1.toUpperCase()}</Text> : null}
             {firm.address2 ? <Text style={styles.infoAddr}>{firm.address2.toUpperCase()}</Text> : null}
@@ -171,11 +176,10 @@ export default function InvoicePDF({ data }) {
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={{ height: 0.5, backgroundColor: '#dedad0', marginVertical: divMY }} />
 
         {/* ── Bill To / Invoice Meta ── */}
-        <View style={styles.billMetaRow}>
-          {/* Left: Bill To + Project */}
+        <View style={{ flexDirection: 'row', marginBottom: metaMB }}>
           <View style={styles.billToCol}>
             <Text style={styles.sectionLabel}>BILL TO</Text>
             <Text style={styles.billToName}>{client.name || '—'}</Text>
@@ -187,10 +191,8 @@ export default function InvoicePDF({ data }) {
             {project.projNo ? <Text style={styles.billToText}>Project No.  {project.projNo}</Text> : null}
           </View>
 
-          {/* Right: Invoice metadata */}
           <View style={styles.invoiceMetaCol}>
             <Text style={styles.invoiceTitle}>INVOICE</Text>
-
             <View style={styles.metaRow}>
               <Text style={styles.metaKey}>INVOICE NO.</Text>
               <Text style={styles.metaValOrange}>{invoiceNo}</Text>
@@ -218,13 +220,13 @@ export default function InvoicePDF({ data }) {
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={{ height: 0.5, backgroundColor: '#dedad0', marginVertical: divMY }} />
 
         {/* ── Professional Services ── */}
         <Text style={styles.sectionTitle}>PROFESSIONAL SERVICES</Text>
 
         {/* Table header */}
-        <View style={styles.tableHead}>
+        <View style={[styles.tableHead, { paddingVertical: thPadV }]}>
           <View style={{ flex: C.service }}>
             <Text style={styles.thCell}>PHASE / SERVICE</Text>
           </View>
@@ -256,44 +258,45 @@ export default function InvoicePDF({ data }) {
           const color = scopeColor(item.scopeCode, scopeTypes)
           const hasCur = (item.curBilling || 0) > 0
           const hasRem = (item.remaining || 0) > 0
+          const pillR  = pillH / 2
           return (
-            <View key={item.id ?? i} style={rowSt}>
+            <View key={item.id ?? i} style={[rowSt, { paddingVertical: phPadV }]}>
               <View style={{ flex: C.service, flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.pill, { backgroundColor: color }]}>
+                <View style={{ width: pillH, height: pillH, borderRadius: pillR, backgroundColor: color, alignItems: 'center', justifyContent: 'center', marginRight: 7, flexShrink: 0 }}>
                   <Text style={styles.pillTxt}>{(item.scopeCode || '').slice(0, 5)}</Text>
                 </View>
-                <Text style={styles.phName}>{item.phaseName}</Text>
+                <Text style={{ fontSize: phFsz, flex: 1 }}>{item.phaseName}</Text>
               </View>
 
               <View style={{ flex: C.contract, alignItems: 'center' }}>
-                <Text style={styles.valAmt}>{fmtD(item.contractFee)}</Text>
+                <Text style={[styles.valAmt, { fontSize: phFsz }]}>{fmtD(item.contractFee)}</Text>
               </View>
 
               <View style={{ flex: C.prev, ...styles.valCell }}>
-                <Text style={styles.valPct}>{fmtP(item.prevPct)}</Text>
-                <Text style={styles.valAmt}>{fmtD(item.prevBilled)}</Text>
+                <Text style={[styles.valPct, { fontSize: pctFsz }]}>{fmtP(item.prevPct)}</Text>
+                <Text style={[styles.valAmt, { fontSize: phFsz }]}>{fmtD(item.prevBilled)}</Text>
               </View>
 
               <View style={{ flex: C.cur, ...styles.valCell }}>
-                <Text style={hasCur ? styles.valPctOrange : styles.valPct}>{fmtP(item.curPct)}</Text>
-                <Text style={hasCur ? styles.valAmtOrange : styles.valAmt}>{fmtD(item.curBilling)}</Text>
+                <Text style={[hasCur ? styles.valPctOrange : styles.valPct, { fontSize: pctFsz }]}>{fmtP(item.curPct)}</Text>
+                <Text style={[hasCur ? styles.valAmtOrange : styles.valAmt, { fontSize: phFsz }]}>{fmtD(item.curBilling)}</Text>
               </View>
 
               <View style={{ flex: C.total, ...styles.valCell }}>
-                <Text style={styles.valPct}>{fmtP(item.totalPct)}</Text>
-                <Text style={styles.valAmt}>{fmtD(item.totalBilled)}</Text>
+                <Text style={[styles.valPct, { fontSize: pctFsz }]}>{fmtP(item.totalPct)}</Text>
+                <Text style={[styles.valAmt, { fontSize: phFsz }]}>{fmtD(item.totalBilled)}</Text>
               </View>
 
               <View style={{ flex: C.rem, ...styles.valCell }}>
-                <Text style={hasRem ? styles.valPctGreen : styles.valPct}>{fmtP(item.remPct)}</Text>
-                <Text style={hasRem ? styles.valAmtGreen : styles.valAmt}>{fmtD(item.remaining)}</Text>
+                <Text style={[hasRem ? styles.valPctGreen : styles.valPct, { fontSize: pctFsz }]}>{fmtP(item.remPct)}</Text>
+                <Text style={[hasRem ? styles.valAmtGreen : styles.valAmt, { fontSize: phFsz }]}>{fmtD(item.remaining)}</Text>
               </View>
             </View>
           )
         })}
 
         {/* Totals row */}
-        <View style={styles.totalRow}>
+        <View style={[styles.totalRow, { paddingVertical: totPadV }]}>
           <View style={{ flex: C.service }}>
             <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold' }}>TOTAL PROFESSIONAL SERVICES</Text>
           </View>
@@ -319,12 +322,11 @@ export default function InvoicePDF({ data }) {
         </View>
 
         {/* ── Contract Summary + Progress ── */}
-        <View style={styles.summaryRow}>
+        <View style={{ flexDirection: 'row', marginTop: sumMT, gap: sumGap }}>
 
-          {/* Left: Contract Summary box */}
+          {/* Left: Contract Summary */}
           <View style={styles.summaryLeft}>
             <Text style={styles.summaryTitle}>CONTRACT SUMMARY</Text>
-
             <View style={styles.summaryLine}>
               <Text style={styles.summaryLabel}>Original Contract Amount</Text>
               <Text style={styles.summaryVal}>{fmtD(totalContract)}</Text>
@@ -341,9 +343,7 @@ export default function InvoicePDF({ data }) {
               <Text style={styles.summaryLabel}>Total Billed (Including This Invoice)</Text>
               <Text style={styles.summaryVal}>{fmtD(totalBilled)}</Text>
             </View>
-
             <View style={styles.summarySep} />
-
             <View style={styles.summaryLine}>
               <Text style={styles.summaryLabelBold}>REMAINING CONTRACT BALANCE</Text>
               <Text style={styles.summaryValBold}>{fmtD(totalRem)}</Text>
@@ -357,15 +357,13 @@ export default function InvoicePDF({ data }) {
               <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>{fmtP(totalBilledPct)} BILLED</Text>
             </View>
 
-            {/* Progress bar */}
-            <View style={styles.progressBar}>
+            <View style={{ flexDirection: 'row', height: barH, marginBottom: 8, borderRadius: 2 }}>
               <View style={{ flex: prevFlex, backgroundColor: '#3D6B5E', borderTopLeftRadius: 2, borderBottomLeftRadius: 2 }} />
               <View style={{ flex: curFlex, backgroundColor: T }} />
               <View style={{ flex: remFlex, backgroundColor: S, borderTopRightRadius: 2, borderBottomRightRadius: 2 }} />
             </View>
 
-            {/* Progress labels */}
-            <View style={styles.progressLabels}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: progMB }}>
               <View style={styles.progressItem}>
                 <Text style={[styles.progPct, { color: '#3D6B5E' }]}>{fmtP(totalPrevPct)}</Text>
                 <Text style={styles.progAmt}>{fmtD(totalPrev)}</Text>
@@ -383,7 +381,6 @@ export default function InvoicePDF({ data }) {
               </View>
             </View>
 
-            {/* Amount Due */}
             <View style={styles.amountRow}>
               <View>
                 <Text style={styles.amountLabel}>AMOUNT DUE</Text>
@@ -399,13 +396,13 @@ export default function InvoicePDF({ data }) {
 
         {/* ── Notes ── */}
         {notes ? (
-          <View style={styles.notesSection}>
+          <View style={{ marginTop: noteMT, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: S }}>
             <Text style={styles.notesTitle}>NOTES</Text>
             <Text style={styles.notesText}>{notes}</Text>
           </View>
         ) : null}
 
-        {/* ── Footer (fixed — repeats on every page) ── */}
+        {/* ── Footer (fixed position — appears on every page) ── */}
         <View style={styles.footer} fixed>
           <View style={styles.footerBrandLine} />
           <View style={styles.footerRow}>
