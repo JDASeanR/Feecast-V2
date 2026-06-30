@@ -18,33 +18,35 @@ const fmtP = n => Math.round(n || 0) + '%'
 
 const C = { service: 2.6, contract: 1, prev: 1.15, cur: 1.15, total: 1.15, rem: 1.15 }
 
-// Density tiers: compress spacing proportionally to keep invoice on one page.
-// n = lineItems.length + 3 if notes present (notes consume similar vertical space as ~3 phases).
-// Tier breakpoints: ≤4 | ≤7 | ≤10 | 11+
+// Density tiers: compress spacing only when needed to keep invoice on one page.
+// React-pdf renders more compactly than theoretical estimates, so typical invoices
+// (≤~10 phases) fit comfortably with full spacing. Compress only for high phase counts.
+// n = lineItems.length + 1 if notes present.
+// Tier breakpoints: ≤8 | ≤12 | ≤16 | 17+
 const DENSITY = [
-  { // tier 0 — ≤4 effective phases
-    phPadV:6, pillH:20, phFsz:8.5, pctFsz:7, logoSz:104,
-    infoMB:12, metaMB:10, divMY:9, thPadV:5, totPadV:6,
-    sumMT:12, sumGap:16, noteMT:10, barH:16, progMB:9,
-    showProgLabels:true, invTitleFsz:18, invTitleMB:9, billToFsz:11, amtFsz:20,
+  { // tier 0 — ≤8 effective phases — full design
+    phPadV:6, pillH:20, phFsz:8.5, pctFsz:7, logoSz:112,
+    infoMB:14, metaMB:12, divMY:10, thPadV:5, totPadV:7,
+    sumMT:14, sumGap:18, noteMT:12, barH:16, progMB:10,
+    showProgLabels:true, invTitleFsz:19, invTitleMB:9, billToFsz:11, amtFsz:20,
   },
-  { // tier 1 — 5-7
-    phPadV:4, pillH:17, phFsz:8, pctFsz:6.5, logoSz:92,
-    infoMB:7, metaMB:7, divMY:6, thPadV:4, totPadV:5,
-    sumMT:8, sumGap:12, noteMT:7, barH:14, progMB:6,
-    showProgLabels:true, invTitleFsz:16, invTitleMB:7, billToFsz:10, amtFsz:18,
+  { // tier 1 — 9-12 — light compression
+    phPadV:4, pillH:18, phFsz:8, pctFsz:6.5, logoSz:100,
+    infoMB:10, metaMB:9, divMY:8, thPadV:4, totPadV:6,
+    sumMT:10, sumGap:14, noteMT:9, barH:14, progMB:8,
+    showProgLabels:true, invTitleFsz:17, invTitleMB:7, billToFsz:10, amtFsz:18,
   },
-  { // tier 2 — 8-10
-    phPadV:2, pillH:13, phFsz:7.5, pctFsz:6, logoSz:78,
-    infoMB:5, metaMB:5, divMY:4, thPadV:3, totPadV:3,
-    sumMT:5, sumGap:8, noteMT:4, barH:11, progMB:3,
-    showProgLabels:false, invTitleFsz:14, invTitleMB:5, billToFsz:9, amtFsz:15,
+  { // tier 2 — 13-16 — medium compression
+    phPadV:2, pillH:15, phFsz:7.5, pctFsz:6, logoSz:86,
+    infoMB:7, metaMB:6, divMY:5, thPadV:3, totPadV:4,
+    sumMT:7, sumGap:10, noteMT:6, barH:12, progMB:5,
+    showProgLabels:false, invTitleFsz:15, invTitleMB:6, billToFsz:9, amtFsz:16,
   },
-  { // tier 3 — 11+
-    phPadV:1, pillH:11, phFsz:7, pctFsz:5.5, logoSz:64,
-    infoMB:3, metaMB:3, divMY:3, thPadV:2, totPadV:2,
-    sumMT:3, sumGap:6, noteMT:3, barH:9, progMB:2,
-    showProgLabels:false, invTitleFsz:12, invTitleMB:4, billToFsz:8, amtFsz:13,
+  { // tier 3 — 17+ — tight
+    phPadV:1, pillH:12, phFsz:7, pctFsz:5.5, logoSz:70,
+    infoMB:4, metaMB:4, divMY:3, thPadV:2, totPadV:2,
+    sumMT:4, sumGap:6, noteMT:4, barH:10, progMB:3,
+    showProgLabels:false, invTitleFsz:13, invTitleMB:4, billToFsz:8, amtFsz:13,
   },
 ]
 
@@ -142,9 +144,9 @@ export default function InvoicePDF({ data }) {
     totalBilled, totalBilledPct, totalRem, totalRemPct,
   } = totals
 
-  // Notes add ~3 phases worth of vertical space; include in tier calculation
-  const n = lineItems.length + (notes ? 3 : 0)
-  const den = DENSITY[n <= 4 ? 0 : n <= 7 ? 1 : n <= 10 ? 2 : 3]
+  // Notes add roughly one phase of vertical space
+  const n = lineItems.length + (notes ? 1 : 0)
+  const den = DENSITY[n <= 8 ? 0 : n <= 12 ? 1 : n <= 16 ? 2 : 3]
   const {
     phPadV, pillH, phFsz, pctFsz, logoSz,
     infoMB, metaMB, divMY, thPadV, totPadV,
@@ -275,7 +277,7 @@ export default function InvoicePDF({ data }) {
                   alignItems:'center', justifyContent:'center', marginRight:7, flexShrink:0 }}>
                   <Text style={styles.pillTxt}>{(item.scopeCode||'').slice(0,5)}</Text>
                 </View>
-                <Text style={{ fontSize:phFsz, flex:1 }} numberOfLines={1}>{item.phaseName}</Text>
+                <Text style={{ fontSize:phFsz, flex:1 }}>{item.phaseName}</Text>
               </View>
               <View style={{ flex:C.contract, alignItems:'center' }}>
                 <Text style={[styles.valAmt, { fontSize:phFsz }]}>{fmtD(item.contractFee)}</Text>
