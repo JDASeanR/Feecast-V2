@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { pdf as renderPDF, BlobProvider } from '@react-pdf/renderer'
 import { fmt, clsx, CY, CM, CUR_MK, phFeeTotal } from '../../lib/utils'
 import InvoicePDF from './InvoicePDF.jsx'
@@ -254,14 +254,17 @@ export default function InvoiceTab({ appState, mutate }) {
       }))
   }, [activeProjects])
 
+  const previewIframeRef = useRef(null)
+
   // ── Print helper ─────────────────────────────────────────────────────────────
-  const printInvoice = useCallback(async () => {
-    if (!previewData) return
-    const blob = await renderPDF(<InvoicePDF data={previewData} />).toBlob()
-    const url  = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 15000)
-  }, [previewData])
+  const printInvoice = useCallback(() => {
+    try {
+      previewIframeRef.current?.contentWindow?.print()
+    } catch {
+      // cross-origin / plugin restriction fallback
+      if (previewIframeRef.current?.src) window.open(previewIframeRef.current.src, '_blank')
+    }
+  }, [])
 
   // ── Individual generate ───────────────────────────────────────────────────────
   const generateIndividual = useCallback(async () => {
@@ -359,21 +362,10 @@ export default function InvoiceTab({ appState, mutate }) {
           ))}
         </select>
 
-        {/* Client (statement mode only) */}
-        {mode === 'statement' && (
-          <select
-            value={selectedClientKey ?? ''}
-            onChange={e => setSelectedClientKey(e.target.value || null)}
-            className="select text-xs flex-1 max-w-xs"
-          >
-            <option value="">— Select client —</option>
-            {clientList.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
       </div>
 
       {/* ── Body ── */}
-      <div className={clsx('flex-1', mode === 'individual' ? 'overflow-hidden' : 'overflow-auto p-4')}>
+      <div className={clsx('flex-1', (mode === 'individual' || mode === 'statement') ? 'overflow-hidden' : 'overflow-auto p-4')}>
 
         {/* ────── Individual: two-pane ────── */}
         {mode === 'individual' && (
@@ -586,6 +578,7 @@ export default function InvoiceTab({ appState, mutate }) {
                             </div>
                           )}
                           <iframe
+                            ref={previewIframeRef}
                             src={url}
                             className="border-none block w-full shadow-2xl"
                             style={{ height: 'calc(680px * 11 / 8.5)' }}
@@ -728,23 +721,57 @@ export default function InvoiceTab({ appState, mutate }) {
           </div>
         )}
 
-        {/* ────── Client Statement ────── */}
+        {/* ────── Client Statement: two-pane ────── */}
         {mode === 'statement' && (
-          <div className="max-w-2xl mx-auto">
-            {!selectedClientKey ? (
-              <div className="text-center py-20 text-olive text-sm">
-                <i className="ti ti-file-text text-2xl block mb-2 opacity-40" />
-                Select a client above to generate a statement.
+          <div className="flex h-full">
+
+            {/* Left panel: client list */}
+            <div style={{ width: 300 }} className="flex-shrink-0 flex flex-col overflow-y-auto border-r border-sand-2 bg-sand/20">
+              <div className="px-3 py-2 bg-sand/60 border-b border-sand-2 flex-shrink-0">
+                <span className="text-2xs font-semibold uppercase tracking-wider text-olive">Clients</span>
               </div>
-            ) : (
-              <ClientStatementView
-                clientKey={selectedClientKey}
-                projects={activeProjects}
-                invoices={invoices}
-                settings={settings}
-                scopeTypes={scopeTypes}
-              />
-            )}
+              {clientList.map(c => {
+                const projCount = activeProjects.filter(p => (p._client || p.client) === c).length
+                return (
+                  <button
+                    key={c}
+                    onClick={() => setSelectedClientKey(c)}
+                    className={clsx(
+                      'w-full text-left px-4 py-2.5 border-b border-sand-2/40 transition-colors',
+                      selectedClientKey === c
+                        ? 'bg-terracotta/10 text-terracotta border-l-2 border-l-terracotta'
+                        : 'text-dark hover:bg-sand-2'
+                    )}
+                  >
+                    <div className={clsx('text-xs font-semibold', selectedClientKey === c ? 'text-terracotta' : 'text-dark')}>{c}</div>
+                    <div className="text-2xs text-olive mt-0.5">{projCount} project{projCount !== 1 ? 's' : ''}</div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Right panel: statement content */}
+            <div className="flex-1 overflow-auto p-4">
+              {!selectedClientKey ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-olive">
+                    <i className="ti ti-file-text text-4xl block mb-3 opacity-30" />
+                    <div className="text-sm">Select a client to view their statement</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-2xl mx-auto">
+                  <ClientStatementView
+                    clientKey={selectedClientKey}
+                    projects={activeProjects}
+                    invoices={invoices}
+                    settings={settings}
+                    scopeTypes={scopeTypes}
+                  />
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
