@@ -24,25 +24,25 @@ const C = { service: 2.6, contract: 1, prev: 1.15, cur: 1.15, total: 1.15, rem: 
 const DENSITY = [
   { // tier 0 — ≤6 effective phases — near-full design
     phPadV:6, pillH:20, phFsz:8.5, pctFsz:7, logoSz:108,
-    infoMB:13, metaMB:11, divMY:10, thPadV:5, totPadV:7,
+    infoMB:13, metaMB:7, divMY:8, thPadV:5, totPadV:7,
     sumMT:13, sumGap:17, noteMT:11, barH:16, progMB:10,
     showProgLabels:true, invTitleFsz:19, invTitleMB:9, billToFsz:11, amtFsz:20,
   },
   { // tier 1 — 7-10 — light compression
     phPadV:4, pillH:18, phFsz:8, pctFsz:6.5, logoSz:96,
-    infoMB:9, metaMB:8, divMY:7, thPadV:4, totPadV:6,
+    infoMB:9, metaMB:5, divMY:5, thPadV:4, totPadV:6,
     sumMT:9, sumGap:13, noteMT:8, barH:14, progMB:7,
     showProgLabels:true, invTitleFsz:17, invTitleMB:7, billToFsz:10, amtFsz:18,
   },
   { // tier 2 — 11-13 — medium compression
     phPadV:2, pillH:14, phFsz:7.5, pctFsz:6, logoSz:82,
-    infoMB:6, metaMB:5, divMY:5, thPadV:3, totPadV:4,
+    infoMB:6, metaMB:3, divMY:4, thPadV:3, totPadV:4,
     sumMT:6, sumGap:9, noteMT:5, barH:12, progMB:4,
     showProgLabels:false, invTitleFsz:14, invTitleMB:5, billToFsz:9, amtFsz:15,
   },
   { // tier 3 — 14+ — tight
     phPadV:1, pillH:12, phFsz:7, pctFsz:5.5, logoSz:67,
-    infoMB:4, metaMB:4, divMY:3, thPadV:2, totPadV:2,
+    infoMB:4, metaMB:2, divMY:2, thPadV:2, totPadV:2,
     sumMT:4, sumGap:6, noteMT:4, barH:10, progMB:3,
     showProgLabels:false, invTitleFsz:13, invTitleMB:4, billToFsz:8, amtFsz:13,
   },
