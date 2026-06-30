@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { id: 'employees',     icon: 'ti-id-badge',     label: 'Employee Counts' },
   { id: 'firm',          icon: 'ti-settings-2',   label: 'Firm & App' },
   { id: 'email',         icon: 'ti-mail',         label: 'Email Digest' },
+  { id: 'invoicing',     icon: 'ti-file-invoice', label: 'Invoicing' },
+  { id: 'banking',       icon: 'ti-building-bank',label: 'Banking / Payment' },
   { id: 'advanced',      icon: 'ti-tools',        label: 'Advanced' },
 ]
 
@@ -23,6 +25,8 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
   const [digestMsg, setDigestMsg] = useState(null)
   const [sendingProj, setSendingProj] = useState(false)
   const [projMsg, setProjMsg] = useState(null)
+  const [bankingPinInput, setBankingPinInput] = useState('')
+  const [bankingUnlocked, setBankingUnlocked] = useState(false)
 
   const sendDigestNow = async () => {
     setSendingDigest(true); setDigestMsg(null)
@@ -545,6 +549,216 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
                     </div>
                   </div>
                 </div>
+              </Section>
+            )}
+
+            {/* Invoicing */}
+            {section === 'invoicing' && (
+              <Section title="Invoicing" desc="Invoice numbering, defaults, and firm contact details for invoice headers.">
+                <div className="space-y-4">
+                  <div>
+                    <label className="field-label">Invoice Number Format</label>
+                    <input value={local.invoicing?.numberFormat||'YYYYMM##'}
+                      onChange={e=>set('invoicing',{...local.invoicing,numberFormat:e.target.value})}
+                      className="input text-xs w-48 font-mono" placeholder="YYYYMM##" />
+                    <div className="text-2xs text-dark-3 mt-1">
+                      YYYY = year, MM = month, ## = 2-digit sequence (resets monthly). E.g. YYYYMM## → 20260601
+                    </div>
+                    <div className="text-2xs text-olive mt-1 font-mono">
+                      Preview: {(() => {
+                        const fmt = local.invoicing?.numberFormat || 'YYYYMM##'
+                        const now = new Date()
+                        const y = now.getFullYear(), m = now.getMonth() + 1
+                        return fmt.replace('YYYY', y).replace('YY', String(y).slice(2)).replace('MM', String(m).padStart(2,'0')).replace('##', '01')
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Default Payment Terms</label>
+                      <input value={local.invoicing?.paymentTerms||'Net 30 Days'}
+                        onChange={e=>set('invoicing',{...local.invoicing,paymentTerms:e.target.value})}
+                        className="input text-xs w-full" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="field-label">Default Invoice Notes</label>
+                    <textarea value={local.invoicing?.defaultNotes||'Thank you for the opportunity to be of service.\nPlease reference the invoice number on your payment.'}
+                      onChange={e=>set('invoicing',{...local.invoicing,defaultNotes:e.target.value})}
+                      className="input text-xs w-full h-16 resize-y" />
+                  </div>
+
+                  <div className="pt-3 border-t border-sand-2">
+                    <div className="text-xs font-semibold mb-2">Firm Header Details</div>
+                    <div className="text-2xs text-dark-3 mb-3">These appear in the invoice header. Falls back to Firm &amp; App settings if left blank.</div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="field-label">Firm Full Name (invoice header)</label>
+                        <input value={local.invoicing?.firmFullName||''}
+                          onChange={e=>set('invoicing',{...local.invoicing,firmFullName:e.target.value})}
+                          className="input text-xs w-full" placeholder={local.firm?.fullName||'JEFFREY DeMURE + ASSOCIATES'} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="field-label">Address Line 1</label>
+                          <input value={local.invoicing?.firmAddr1||''}
+                            onChange={e=>set('invoicing',{...local.invoicing,firmAddr1:e.target.value})}
+                            className="input text-xs w-full" placeholder="3001 Douglas Boulevard, Suite 110" />
+                        </div>
+                        <div>
+                          <label className="field-label">Address Line 2</label>
+                          <input value={local.invoicing?.firmAddr2||''}
+                            onChange={e=>set('invoicing',{...local.invoicing,firmAddr2:e.target.value})}
+                            className="input text-xs w-full" placeholder="Roseville, California 95661" />
+                        </div>
+                        <div>
+                          <label className="field-label">Phone</label>
+                          <input value={local.invoicing?.firmPhone||''}
+                            onChange={e=>set('invoicing',{...local.invoicing,firmPhone:e.target.value})}
+                            className="input text-xs w-full" placeholder="916.783.3700" />
+                        </div>
+                        <div>
+                          <label className="field-label">Website</label>
+                          <input value={local.invoicing?.firmWebsite||''}
+                            onChange={e=>set('invoicing',{...local.invoicing,firmWebsite:e.target.value})}
+                            className="input text-xs w-full" placeholder="JDAARCH.COM" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Section>
+            )}
+
+            {/* Banking / Payment */}
+            {section === 'banking' && (
+              <Section title="Banking / Payment" desc="ACH and wire transfer details shown on invoice footers. PIN protected.">
+                {!bankingUnlocked ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-4">
+                    <i className="ti ti-lock text-3xl text-olive opacity-60" />
+                    <div className="text-sm text-dark">Enter PIN to view banking details</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={bankingPinInput}
+                        onChange={e => setBankingPinInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key !== 'Enter') return
+                          const storedPin = local.banking?.pin || '1234'
+                          if (bankingPinInput === storedPin) { setBankingUnlocked(true); setBankingPinInput('') }
+                          else { alert('Incorrect PIN'); setBankingPinInput('') }
+                        }}
+                        className="input text-xs w-28 text-center font-mono"
+                        placeholder="PIN"
+                        maxLength={12}
+                      />
+                      <button
+                        onClick={() => {
+                          const storedPin = local.banking?.pin || '1234'
+                          if (bankingPinInput === storedPin) { setBankingUnlocked(true); setBankingPinInput('') }
+                          else { alert('Incorrect PIN'); setBankingPinInput('') }
+                        }}
+                        className="btn btn-primary text-xs"
+                      >
+                        Unlock
+                      </button>
+                    </div>
+                    <div className="text-2xs text-dark-3">Default PIN is 1234 — change it after unlocking.</div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
+                      <button onClick={() => setBankingUnlocked(false)} className="btn text-2xs text-olive">
+                        <i className="ti ti-lock" /> Lock
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="field-label">PIN (to access this section)</label>
+                      <input type="password" value={local.banking?.pin||'1234'}
+                        onChange={e=>set('banking',{...local.banking,pin:e.target.value})}
+                        className="input text-xs w-32 font-mono" maxLength={12} />
+                    </div>
+
+                    <div className="pt-3 border-t border-sand-2">
+                      <div className="text-xs font-semibold mb-3">ACH / Wire Transfer</div>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="field-label">Bank Name</label>
+                            <input value={local.banking?.bankName||''}
+                              onChange={e=>set('banking',{...local.banking,bankName:e.target.value})}
+                              className="input text-xs w-full" placeholder="Wells Fargo Bank" />
+                          </div>
+                          <div>
+                            <label className="field-label">Account Name</label>
+                            <input value={local.banking?.accountName||''}
+                              onChange={e=>set('banking',{...local.banking,accountName:e.target.value})}
+                              className="input text-xs w-full" placeholder="Jeffrey DeMure + Associates" />
+                          </div>
+                          <div>
+                            <label className="field-label">Routing Number</label>
+                            <input value={local.banking?.routingNo||''}
+                              onChange={e=>set('banking',{...local.banking,routingNo:e.target.value})}
+                              className="input text-xs w-full font-mono" placeholder="121000248" />
+                          </div>
+                          <div>
+                            <label className="field-label">Account Number</label>
+                            <input value={local.banking?.accountNo||''}
+                              onChange={e=>set('banking',{...local.banking,accountNo:e.target.value})}
+                              className="input text-xs w-full font-mono" placeholder="4123456789" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-sand-2">
+                      <div className="text-xs font-semibold mb-3">Mail Payments To</div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="field-label">Name</label>
+                          <input value={local.banking?.mailName||''}
+                            onChange={e=>set('banking',{...local.banking,mailName:e.target.value})}
+                            className="input text-xs w-full" placeholder="Jeffrey DeMure + Associates" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="field-label">Address</label>
+                            <input value={local.banking?.mailAddr1||''}
+                              onChange={e=>set('banking',{...local.banking,mailAddr1:e.target.value})}
+                              className="input text-xs w-full" placeholder="3001 Douglas Boulevard, Suite 110" />
+                          </div>
+                          <div>
+                            <label className="field-label">City, State ZIP</label>
+                            <input value={local.banking?.mailAddr2||''}
+                              onChange={e=>set('banking',{...local.banking,mailAddr2:e.target.value})}
+                              className="input text-xs w-full" placeholder="Roseville, California 95661" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-sand-2">
+                      <div className="text-xs font-semibold mb-3">Questions Contact</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="field-label">Email</label>
+                          <input value={local.banking?.questionsEmail||''}
+                            onChange={e=>set('banking',{...local.banking,questionsEmail:e.target.value})}
+                            className="input text-xs w-full" placeholder="accounting@jdaarch.com" />
+                        </div>
+                        <div>
+                          <label className="field-label">Phone</label>
+                          <input value={local.banking?.questionsPhone||''}
+                            onChange={e=>set('banking',{...local.banking,questionsPhone:e.target.value})}
+                            className="input text-xs w-full" placeholder="916.783.3700" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Section>
             )}
 

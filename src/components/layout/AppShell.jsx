@@ -14,6 +14,7 @@ import DashboardTab from '../tabs/DashboardTab.jsx'
 import SummaryTab from '../tabs/SummaryTab.jsx'
 import ReportsTab from '../tabs/ReportsTab.jsx'
 import WidgetsTab from '../tabs/WidgetsTab.jsx'
+import InvoiceTab from '../tabs/InvoiceTab.jsx'
 import UserGuide from './UserGuide.jsx'
 import ChatDrawer from './ChatDrawer.jsx'
 import ChatToast from './ChatToast.jsx'
@@ -27,6 +28,7 @@ const TABS = [
   { id: 'ar',            label: 'A/R',                 icon: 'ti-receipt' },
   { id: 'followup',      label: 'Follow-up',           icon: 'ti-flag' },
   { id: 'warnings',      label: 'Allocation Warnings', icon: 'ti-alert-triangle' },
+  { id: 'invoices',      label: 'Invoices',            icon: 'ti-file-invoice'    },
   { id: 'reports',       label: 'Reports',             icon: 'ti-file-analytics' },
   { id: 'widgets',       label: 'Widgets',             icon: 'ti-chart-area-line' },
 ]
@@ -479,6 +481,8 @@ export default function AppShell({ session, store }) {
           ? <FollowUpTab appState={appState} mutate={store.mutate} />
           : activeTab === 'warnings'
           ? <AllocationWarningsTab appState={appState} onNavigate={setActiveTab} />
+          : activeTab === 'invoices'
+          ? <InvoiceTab appState={appState} mutate={store.mutate} />
           : activeTab === 'reports'
           ? <ReportsTab appState={appState} />
           : activeTab === 'widgets'
