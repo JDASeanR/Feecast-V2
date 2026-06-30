@@ -254,6 +254,15 @@ export default function InvoiceTab({ appState, mutate }) {
       }))
   }, [activeProjects])
 
+  // ── Print helper ─────────────────────────────────────────────────────────────
+  const printInvoice = useCallback(async () => {
+    if (!previewData) return
+    const blob = await renderPDF(<InvoicePDF data={previewData} />).toBlob()
+    const url  = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 15000)
+  }, [previewData])
+
   // ── Individual generate ───────────────────────────────────────────────────────
   const generateIndividual = useCallback(async () => {
     if (!invoiceData || !selectedProject || generating) return
@@ -386,10 +395,8 @@ export default function InvoiceTab({ appState, mutate }) {
                       {/* Client header */}
                       <div
                         className={clsx(
-                          'flex items-center gap-1.5 px-3 py-1.5 text-2xs border-b border-sand-2/60',
-                          isMulti
-                            ? 'cursor-pointer hover:bg-sand-2 font-semibold text-dark'
-                            : 'font-medium text-olive'
+                          'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b border-sand-3 bg-[#3D3935]/10 text-dark tracking-wide',
+                          isMulti && 'cursor-pointer hover:bg-[#3D3935]/15'
                         )}
                         onClick={isMulti ? () => toggleClient(client) : undefined}
                       >
@@ -523,34 +530,68 @@ export default function InvoiceTab({ appState, mutate }) {
             </div>
 
             {/* Right panel: WYSIWYG PDF preview */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-neutral-300">
+            <div className="flex-1 flex flex-col overflow-hidden">
+
+              {/* Preview toolbar */}
+              <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-[#3D3935]">
+                <span className="text-white/60 text-xs flex-1 truncate">
+                  {selectedProject ? selectedProject.project : 'Invoice Preview'}
+                </span>
+                {previewData && (
+                  <button
+                    onClick={printInvoice}
+                    className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 px-2 py-1 rounded transition-colors"
+                  >
+                    <i className="ti ti-printer" />Print
+                  </button>
+                )}
+                <button
+                  onClick={generateIndividual}
+                  disabled={generating || !invoiceData}
+                  className="flex items-center gap-1.5 text-xs bg-terracotta hover:bg-terracotta/80 text-white px-3 py-1.5 rounded font-semibold transition-colors disabled:opacity-40"
+                >
+                  {generating
+                    ? <><i className="ti ti-loader-2 spin" />Generating…</>
+                    : <><i className="ti ti-file-download" />Download PDF</>
+                  }
+                </button>
+              </div>
+
+              {/* Preview area */}
               {!selectedProject ? (
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center bg-neutral-400">
                   <div className="text-center text-neutral-500">
                     <i className="ti ti-file-invoice text-5xl block mb-3 opacity-30" />
                     <div className="text-sm">Select a project to preview the invoice</div>
                   </div>
                 </div>
               ) : !previewData ? (
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center bg-neutral-400">
                   <i className="ti ti-loader-2 spin text-neutral-500 text-2xl" />
                 </div>
               ) : (
                 <BlobProvider document={<InvoicePDF data={previewData} />}>
                   {({ url, loading }) => (
-                    <div className="flex-1 flex flex-col h-full min-h-0">
-                      {loading && (
-                        <div className="flex-shrink-0 bg-sand/80 px-3 py-1 text-2xs text-olive flex items-center gap-2">
-                          <i className="ti ti-loader-2 spin text-xs" />
-                          Updating preview…
+                    <div className="flex-1 overflow-auto bg-neutral-400 p-6 flex justify-center min-h-0">
+                      {loading && !url && (
+                        <div className="self-center">
+                          <i className="ti ti-loader-2 spin text-neutral-500 text-2xl" />
                         </div>
                       )}
                       {url && (
-                        <iframe
-                          src={url}
-                          className="flex-1 min-h-0 border-none w-full"
-                          title="Invoice Preview"
-                        />
+                        <div className="relative" style={{ width: '100%', maxWidth: 680, flexShrink: 0 }}>
+                          {loading && (
+                            <div className="absolute top-2 right-2 z-10 bg-white/90 rounded px-2 py-1 text-2xs text-olive flex items-center gap-1 shadow">
+                              <i className="ti ti-loader-2 spin text-xs" />Updating…
+                            </div>
+                          )}
+                          <iframe
+                            src={url}
+                            className="border-none block w-full shadow-2xl"
+                            style={{ height: 'calc(680px * 11 / 8.5)' }}
+                            title="Invoice Preview"
+                          />
+                        </div>
                       )}
                     </div>
                   )}

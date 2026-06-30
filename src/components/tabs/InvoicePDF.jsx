@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   infoCenter: { flex: 1, alignItems: 'center' },
   infoRight: { width: 150, alignItems: 'flex-end' },
   infoAddr: { fontSize: 6.5, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.1, lineHeight: 1.6 },
-  infoFirmName: { fontSize: 8, fontFamily: 'Helvetica', letterSpacing: 1.8, color: D, textAlign: 'center' },
+  infoFirmName: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.6, color: D, textAlign: 'center' },
   infoFirmSub: { fontSize: 7, letterSpacing: 2.5, color: D, marginTop: 2 },
 
   divider: { height: 0.5, backgroundColor: '#dedad0', marginVertical: 10 },
