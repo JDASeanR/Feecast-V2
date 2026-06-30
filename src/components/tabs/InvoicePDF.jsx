@@ -34,13 +34,13 @@ const styles = StyleSheet.create({
   // ── Header ──
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   headerLine: { flex: 1, height: 1.5, backgroundColor: T },
-  logo: { width: 70, height: 70, marginHorizontal: 16 },
+  logo: { width: 90, height: 90, marginHorizontal: 14 },
 
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
-  infoLeft: { width: 140 },
+  infoLeft: { width: 160 },
   infoCenter: { flex: 1, alignItems: 'center' },
-  infoRight: { width: 140, alignItems: 'flex-end' },
-  infoAddr: { fontSize: 7.5, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.3, lineHeight: 1.55 },
+  infoRight: { width: 150, alignItems: 'flex-end' },
+  infoAddr: { fontSize: 6.5, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.1, lineHeight: 1.6 },
   infoFirmName: { fontSize: 9, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, color: D },
   infoFirmSub: { fontSize: 7, letterSpacing: 2.5, color: D, marginTop: 2 },
 
@@ -62,8 +62,7 @@ const styles = StyleSheet.create({
   metaValOrange: { fontSize: 8, fontFamily: 'Helvetica-Bold', textAlign: 'right', color: T },
 
   // ── Professional Services ──
-  sectionTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, marginBottom: 3 },
-  sectionDesc: { fontSize: 7.5, color: O, marginBottom: 7 },
+  sectionTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, marginBottom: 7 },
 
   // ── Phase table ──
   tableHead: { flexDirection: 'row', backgroundColor: D, paddingVertical: 5, paddingHorizontal: 6, marginBottom: 0 },
@@ -78,7 +77,7 @@ const styles = StyleSheet.create({
   pillTxt: { fontSize: 5.5, color: '#ffffff', fontFamily: 'Helvetica-Bold', letterSpacing: 0.2 },
   phName: { fontSize: 8.5, flex: 1 },
 
-  valCell: { alignItems: 'flex-end' },
+  valCell: { alignItems: 'center' },
   valPct: { fontSize: 7, color: O },
   valPctOrange: { fontSize: 7, color: T },
   valPctGreen: { fontSize: 7, color: '#2D6B4A' },
@@ -226,9 +225,6 @@ export default function InvoicePDF({ data }) {
 
         {/* ── Professional Services ── */}
         <Text style={styles.sectionTitle}>PROFESSIONAL SERVICES</Text>
-        <Text style={styles.sectionDesc}>
-          {'Professional architectural services performed through ' + servicesThrough + ' in connection with the ' + project.name + ' project.'}
-        </Text>
 
         {/* Table header */}
         <View style={styles.tableHead}>
@@ -418,7 +414,7 @@ export default function InvoicePDF({ data }) {
           <View style={styles.footerRow}>
             <View style={styles.footerCol}>
               <Text style={styles.footerTitle}>MAIL PAYMENTS TO</Text>
-              <Text style={styles.footerText}>{banking?.mailName || firm.fullName || ''}</Text>
+              <Text style={styles.footerText}>{banking?.mailName || firm.fullName || firm.name || ''}</Text>
               {(banking?.mailAddr1 || firm.address1) ? <Text style={styles.footerText}>{banking?.mailAddr1 || firm.address1}</Text> : null}
               {(banking?.mailAddr2 || firm.address2) ? <Text style={styles.footerText}>{banking?.mailAddr2 || firm.address2}</Text> : null}
             </View>
@@ -437,12 +433,13 @@ export default function InvoicePDF({ data }) {
 
             <View style={[styles.footerCol, { paddingRight: 0 }]}>
               <Text style={styles.footerTitle}>QUESTIONS?</Text>
+              {banking?.questionsName  ? <Text style={styles.footerText}>{banking.questionsName}</Text>  : null}
               {banking?.questionsEmail ? <Text style={styles.footerText}>{banking.questionsEmail}</Text> : null}
               {banking?.questionsPhone ? <Text style={styles.footerText}>{banking.questionsPhone}</Text> : null}
             </View>
           </View>
           <Text style={styles.footerBrand}>
-            {'WE APPRECIATE YOUR BUSINESS.  ·  ' + (firm.website || 'JDAARCH.COM')}
+            {'WE APPRECIATE YOUR BUSINESS.  ·  ' + (firm.website || 'JDAARCH.COM').toUpperCase()}
           </Text>
         </View>
 

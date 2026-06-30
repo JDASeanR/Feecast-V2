@@ -741,19 +741,28 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
                     </div>
 
                     <div className="pt-3 border-t border-sand-2">
-                      <div className="text-xs font-semibold mb-3">Questions Contact</div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="text-xs font-semibold mb-1">Questions / A/R Contact</div>
+                      <div className="text-2xs text-dark-3 mb-3">Appears in the "QUESTIONS?" block on every invoice footer.</div>
+                      <div className="space-y-2">
                         <div>
-                          <label className="field-label">Email</label>
-                          <input value={local.banking?.questionsEmail||''}
-                            onChange={e=>set('banking',{...local.banking,questionsEmail:e.target.value})}
-                            className="input text-xs w-full" placeholder="accounting@jdaarch.com" />
+                          <label className="field-label">Contact Name</label>
+                          <input value={local.banking?.questionsName||''}
+                            onChange={e=>set('banking',{...local.banking,questionsName:e.target.value})}
+                            className="input text-xs w-full" placeholder="e.g. Accounting Department" />
                         </div>
-                        <div>
-                          <label className="field-label">Phone</label>
-                          <input value={local.banking?.questionsPhone||''}
-                            onChange={e=>set('banking',{...local.banking,questionsPhone:e.target.value})}
-                            className="input text-xs w-full" placeholder="916.783.3700" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="field-label">Email</label>
+                            <input value={local.banking?.questionsEmail||''}
+                              onChange={e=>set('banking',{...local.banking,questionsEmail:e.target.value})}
+                              className="input text-xs w-full" placeholder="accounting@jdaarch.com" />
+                          </div>
+                          <div>
+                            <label className="field-label">Phone</label>
+                            <input value={local.banking?.questionsPhone||''}
+                              onChange={e=>set('banking',{...local.banking,questionsPhone:e.target.value})}
+                              className="input text-xs w-full" placeholder="916.783.3700" />
+                          </div>
                         </div>
                       </div>
                     </div>

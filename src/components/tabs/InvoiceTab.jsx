@@ -120,7 +120,7 @@ function buildInvoiceData({ project, invMk, settings, overrides = {}, scopeTypes
     project: {
       name:   project.project || '—',
       projNo: project.projNo  || '',
-      pm:     project.pm      || '',
+      pm:     (settings.pms || []).find(p => p.name === project.pm)?.fullName || project.pm || '',
     },
     client: {
       name:     overrides.clientName  ?? clientName,
@@ -135,7 +135,7 @@ function buildInvoiceData({ project, invMk, settings, overrides = {}, scopeTypes
     lineItems,
     totals,
     firm: {
-      fullName: settings.firm?.fullName || settings.firm?.name || 'JEFFREY DeMURE + ASSOCIATES',
+      fullName: settings.invoicing?.firmFullName || settings.firm?.fullName || settings.firm?.name || 'JEFFREY DeMURE + ASSOCIATES',
       tagline:  settings.firm?.tagline  || 'ARCHITECTS  PLANNERS',
       address1: settings.invoicing?.firmAddr1 || settings.firm?.address1 || '',
       address2: settings.invoicing?.firmAddr2 || settings.firm?.address2 || '',
