@@ -142,8 +142,8 @@ export default function InvoicePDF({ data }) {
     totalBilled, totalBilledPct, totalRem, totalRemPct,
   } = totals
 
-  // Notes add ~2 phases of vertical space
-  const n = lineItems.length + (notes ? 2 : 0)
+  // Notes add ~3 phases of vertical space
+  const n = lineItems.length + (notes ? 3 : 0)
   const den = DENSITY[n <= 6 ? 0 : n <= 10 ? 1 : n <= 13 ? 2 : 3]
   const {
     phPadV, pillH, phFsz, pctFsz, logoSz,
