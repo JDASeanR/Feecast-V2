@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     color: D,
     backgroundColor: '#ffffff',
     paddingTop: 28,
-    paddingBottom: 64,
+    paddingBottom: 84,
     paddingHorizontal: 32,
   },
 
@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   infoCenter: { flex: 1, alignItems: 'center' },
   infoRight: { width: 150, alignItems: 'flex-end' },
   infoAddr: { fontSize: 6.5, color: T, fontFamily: 'Helvetica-Bold', letterSpacing: 0.1, lineHeight: 1.6 },
-  infoFirmName: { fontSize: 9, fontFamily: 'Helvetica-Bold', letterSpacing: 1.5, color: D },
+  infoFirmName: { fontSize: 8, fontFamily: 'Helvetica', letterSpacing: 1.8, color: D, textAlign: 'center' },
   infoFirmSub: { fontSize: 7, letterSpacing: 2.5, color: D, marginTop: 2 },
 
   divider: { height: 0.5, backgroundColor: '#dedad0', marginVertical: 10 },
@@ -166,7 +166,6 @@ export default function InvoicePDF({ data }) {
           </View>
           <View style={styles.infoCenter}>
             <Text style={styles.infoFirmName}>{firm.fullName || 'JEFFREY DeMURE + ASSOCIATES'}</Text>
-            <Text style={styles.infoFirmSub}>{firm.tagline || 'ARCHITECTS  PLANNERS'}</Text>
           </View>
           <View style={styles.infoRight}>
             {firm.phone ? <Text style={styles.infoAddr}>{firm.phone}</Text> : null}

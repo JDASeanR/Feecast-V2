@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
-import { pdf as renderPDF } from '@react-pdf/renderer'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { pdf as renderPDF, BlobProvider } from '@react-pdf/renderer'
 import { fmt, clsx, CY, CM, CUR_MK, phFeeTotal } from '../../lib/utils'
 import InvoicePDF from './InvoicePDF.jsx'
 import jdaLogo from '../../assets/jda-logo.png'
@@ -61,7 +61,7 @@ function fmtDate(date) {
 }
 
 function endOfMonth(y, m) {
-  return new Date(y, m, 0) // day 0 = last day of month m
+  return new Date(y, m, 0)
 }
 
 function addDays(date, n) {
@@ -110,9 +110,9 @@ function buildInvoiceData({ project, invMk, settings, overrides = {}, scopeTypes
   const eom  = endOfMonth(invYear, invMonth)
   const dueD = addDays(eom, 30)
 
-  const lineItems = buildLineItems(project, invMk)
-  const totals    = buildTotals(lineItems)
-  const invoiceNo = overrides.invoiceNo ?? generateInvoiceNo(settings.invoicing?.numberFormat, invYear, invMonth, counter)
+  const lineItems  = buildLineItems(project, invMk)
+  const totals     = buildTotals(lineItems)
+  const invoiceNo  = overrides.invoiceNo ?? generateInvoiceNo(settings.invoicing?.numberFormat, invYear, invMonth, counter)
   const clientName = project._client || project.client || '—'
   const clientRecord = (settings.clients || []).find(c => c.name === clientName || String(c.id) === String(project.client))
 
@@ -130,7 +130,7 @@ function buildInvoiceData({ project, invMk, settings, overrides = {}, scopeTypes
     invoiceNo,
     invoiceDate:     fmtDate(new Date()),
     servicesThrough: fmtDate(eom),
-    paymentTerms:    settings.invoicing?.paymentTerms || 'Net 30 Days',
+    paymentTerms:    overrides.paymentTerms ?? settings.invoicing?.paymentTerms ?? 'Net 30 Days',
     dueDate:         fmtDate(dueD),
     lineItems,
     totals,
@@ -182,10 +182,20 @@ export default function InvoiceTab({ appState, mutate }) {
   const [selectedClientKey, setSelectedClientKey]  = useState(null)
   const [overrides,         setOverrides]          = useState({})
   const [generating,        setGenerating]         = useState(false)
-  const [batchProgress,     setBatchProgress]      = useState(null) // null | { done, total, current }
+  const [batchProgress,     setBatchProgress]      = useState(null)
   const [warnDismissed,     setWarnDismissed]      = useState(false)
+  const [collapsedClients,  setCollapsedClients]   = useState(new Set())
+  const [previewData,       setPreviewData]        = useState(null)
 
   const setOvr = useCallback((k, v) => setOverrides(o => ({ ...o, [k]: v })), [])
+
+  const toggleClient = useCallback((c) => {
+    setCollapsedClients(prev => {
+      const next = new Set(prev)
+      if (next.has(c)) next.delete(c); else next.add(c)
+      return next
+    })
+  }, [])
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const selectedProject = activeProjects.find(p => p.id === selectedProjId) || null
@@ -194,13 +204,11 @@ export default function InvoiceTab({ appState, mutate }) {
   const eom  = endOfMonth(invYear, invMonth)
   const dueD = addDays(eom, 30)
 
-  // Projects with billing this month
   const billedProjects = useMemo(() =>
     activeProjects.filter(p => p.phases.some(ph => (ph.monthly?.[invMk] || 0) > 0)),
     [activeProjects, invMk]
   )
 
-  // Confidence check (only applies to current month)
   const nonGreenPhases = useMemo(() => {
     if (invMk !== CUR_MK) return []
     return billedProjects.flatMap(p =>
@@ -212,18 +220,39 @@ export default function InvoiceTab({ appState, mutate }) {
 
   const showWarning = mode === 'batch' && nonGreenPhases.length > 0 && !warnDismissed
 
-  // Invoice preview data
   const invoiceData = useMemo(() => {
     if (!selectedProject) return null
     const counter = nextCounter(settings, invMk)
     return buildInvoiceData({ project: selectedProject, invMk, settings, overrides, scopeTypes, counter })
   }, [selectedProject, invMk, settings, overrides, scopeTypes])
 
-  // Client list for statement mode
+  // Debounce preview updates so every keystroke doesn't regenerate the PDF
+  useEffect(() => {
+    if (!invoiceData) { setPreviewData(null); return }
+    const timer = setTimeout(() => setPreviewData(invoiceData), 400)
+    return () => clearTimeout(timer)
+  }, [invoiceData])
+
   const clientList = useMemo(() =>
     [...new Set(activeProjects.map(p => p._client || p.client).filter(Boolean))].sort(),
     [activeProjects]
   )
+
+  // Projects grouped by client, both sorted alphabetically
+  const projectsByClient = useMemo(() => {
+    const grouped = {}
+    activeProjects.forEach(p => {
+      const c = p._client || '—'
+      if (!grouped[c]) grouped[c] = []
+      grouped[c].push(p)
+    })
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([client, projs]) => ({
+        client,
+        projects: [...projs].sort((a, b) => (a.project || '').localeCompare(b.project || ''))
+      }))
+  }, [activeProjects])
 
   // ── Individual generate ───────────────────────────────────────────────────────
   const generateIndividual = useCallback(async () => {
@@ -255,8 +284,8 @@ export default function InvoiceTab({ appState, mutate }) {
     setGenerating(true)
     setBatchProgress({ done: 0, total: billedProjects.length, current: '' })
 
-    let counter  = nextCounter(settings, invMk) - 1
-    const mk     = invMk
+    let counter = nextCounter(settings, invMk) - 1
+    const mk    = invMk
 
     try {
       for (const p of billedProjects) {
@@ -266,9 +295,8 @@ export default function InvoiceTab({ appState, mutate }) {
         const filename = `Invoice-${data.invoiceNo}-${safeName(p.project)}.pdf`
         await downloadPDF(data, filename)
         setBatchProgress(prev => ({ ...prev, done: prev.done + 1 }))
-        await new Promise(r => setTimeout(r, 350)) // stagger downloads
+        await new Promise(r => setTimeout(r, 350))
       }
-      // Save final counter
       mutate(prev => ({
         ...prev,
         settings: {
@@ -322,24 +350,7 @@ export default function InvoiceTab({ appState, mutate }) {
           ))}
         </select>
 
-        {/* Project (individual) */}
-        {mode === 'individual' && (
-          <select
-            value={selectedProjId ?? ''}
-            onChange={e => {
-              setSelectedProjId(e.target.value ? Number(e.target.value) : null)
-              setOverrides({})
-            }}
-            className="select text-xs flex-1 max-w-xs"
-          >
-            <option value="">— Select project —</option>
-            {activeProjects.map(p => (
-              <option key={p.id} value={p.id}>{p.project}</option>
-            ))}
-          </select>
-        )}
-
-        {/* Client (statement) */}
+        {/* Client (statement mode only) */}
         {mode === 'statement' && (
           <select
             value={selectedClientKey ?? ''}
@@ -353,138 +364,150 @@ export default function InvoiceTab({ appState, mutate }) {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className={clsx('flex-1', mode === 'individual' ? 'overflow-hidden' : 'overflow-auto p-4')}>
 
-        {/* ────── Individual ────── */}
+        {/* ────── Individual: two-pane ────── */}
         {mode === 'individual' && (
-          <div className="max-w-2xl mx-auto space-y-4">
-            {!selectedProject ? (
-              <div className="text-center py-20 text-olive text-sm">
-                <i className="ti ti-file-invoice text-2xl block mb-2 opacity-40" />
-                Select a project above to create an invoice.
+          <div className="flex h-full">
+
+            {/* Left panel: project list + form */}
+            <div style={{ width: 300 }} className="flex-shrink-0 flex flex-col overflow-y-auto border-r border-sand-2 bg-sand/20">
+
+              {/* Grouped project list */}
+              <div className="flex-shrink-0 border-b border-sand-2">
+                <div className="px-3 py-2 bg-sand/60 border-b border-sand-2">
+                  <span className="text-2xs font-semibold uppercase tracking-wider text-olive">Projects</span>
+                </div>
+                {projectsByClient.map(({ client, projects: plist }) => {
+                  const isMulti     = plist.length > 1
+                  const isCollapsed = collapsedClients.has(client)
+                  return (
+                    <div key={client}>
+                      {/* Client header */}
+                      <div
+                        className={clsx(
+                          'flex items-center gap-1.5 px-3 py-1.5 text-2xs border-b border-sand-2/60',
+                          isMulti
+                            ? 'cursor-pointer hover:bg-sand-2 font-semibold text-dark'
+                            : 'font-medium text-olive'
+                        )}
+                        onClick={isMulti ? () => toggleClient(client) : undefined}
+                      >
+                        {isMulti
+                          ? <i className={clsx('ti text-olive text-xs flex-shrink-0', isCollapsed ? 'ti-chevron-right' : 'ti-chevron-down')} />
+                          : <span className="w-3.5 flex-shrink-0" />
+                        }
+                        <span className="flex-1 truncate">{client}</span>
+                        {isMulti && <span className="text-olive font-normal tabular-nums">{plist.length}</span>}
+                      </div>
+
+                      {/* Project rows */}
+                      {(!isMulti || !isCollapsed) && plist.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setSelectedProjId(p.id); setOverrides({}) }}
+                          className={clsx(
+                            'w-full text-left pl-7 pr-3 py-1.5 text-xs border-b border-sand-2/40 transition-colors block',
+                            selectedProjId === p.id
+                              ? 'bg-terracotta/10 text-terracotta font-semibold border-l-2 border-l-terracotta'
+                              : 'text-dark hover:bg-sand-2'
+                          )}
+                        >
+                          {p.project}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
-            ) : (
-              <>
-                {/* Invoice details */}
-                <div className="bg-white rounded-lg border border-sand-2 p-5">
-                  <div className="text-sm font-semibold mb-4">Invoice Details</div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="field-label">Invoice Number</label>
-                      <input
-                        className="input text-xs w-full font-mono"
-                        value={overrides.invoiceNo ?? invoiceData?.invoiceNo ?? ''}
-                        onChange={e => setOvr('invoiceNo', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label">Payment Terms</label>
-                      <input
-                        className="input text-xs w-full"
-                        value={overrides.paymentTerms ?? settings.invoicing?.paymentTerms ?? 'Net 30 Days'}
-                        onChange={e => setOvr('paymentTerms', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="field-label">Invoice Date</label>
-                      <div className="input text-xs bg-sand/60 text-olive">{fmtDate(new Date())}</div>
-                    </div>
-                    <div>
-                      <label className="field-label">Services Through / Due Date</label>
-                      <div className="input text-xs bg-sand/60 text-olive">{fmtDate(eom)} · Due {fmtDate(dueD)}</div>
+
+              {/* Invoice form — visible only when a project is selected */}
+              {selectedProject ? (
+                <div className="p-3 space-y-3">
+
+                  {/* Invoice Details */}
+                  <div className="bg-white rounded border border-sand-2 p-3">
+                    <div className="text-2xs font-semibold text-dark mb-2">Invoice Details</div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="field-label">Invoice Number</label>
+                        <input
+                          className="input text-xs w-full font-mono"
+                          value={overrides.invoiceNo ?? invoiceData?.invoiceNo ?? ''}
+                          onChange={e => setOvr('invoiceNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="field-label">Payment Terms</label>
+                        <input
+                          className="input text-xs w-full"
+                          value={overrides.paymentTerms ?? settings.invoicing?.paymentTerms ?? 'Net 30 Days'}
+                          onChange={e => setOvr('paymentTerms', e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="field-label">Invoice Date</label>
+                          <div className="input text-xs bg-sand/60 text-olive truncate">{fmtDate(new Date())}</div>
+                        </div>
+                        <div>
+                          <label className="field-label">Due Date</label>
+                          <div className="input text-xs bg-sand/60 text-olive truncate">{fmtDate(dueD)}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Bill To */}
-                <div className="bg-white rounded-lg border border-sand-2 p-5">
-                  <div className="text-sm font-semibold mb-1">Bill To</div>
-                  <p className="text-2xs text-olive mb-3">Client addresses will connect to the shared CRM when available.</p>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="field-label">Client Name</label>
-                      <input
-                        className="input text-xs w-full"
-                        value={overrides.clientName ?? (selectedProject._client || selectedProject.client || '')}
-                        onChange={e => setOvr('clientName', e.target.value)}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
+                  {/* Bill To */}
+                  <div className="bg-white rounded border border-sand-2 p-3">
+                    <div className="text-2xs font-semibold text-dark mb-1">Bill To</div>
+                    <p className="text-2xs text-olive mb-2">Addresses will connect to the shared CRM when available.</p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="field-label">Client Name</label>
+                        <input
+                          className="input text-xs w-full"
+                          value={overrides.clientName ?? (selectedProject._client || selectedProject.client || '')}
+                          onChange={e => setOvr('clientName', e.target.value)}
+                        />
+                      </div>
                       <div>
                         <label className="field-label">Address</label>
-                        <input className="input text-xs w-full" placeholder="Optional" value={overrides.clientAddr1 ?? ''} onChange={e => setOvr('clientAddr1', e.target.value)} />
+                        <input
+                          className="input text-xs w-full"
+                          placeholder="Optional"
+                          value={overrides.clientAddr1 ?? ''}
+                          onChange={e => setOvr('clientAddr1', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="field-label">City, State ZIP</label>
-                        <input className="input text-xs w-full" placeholder="Optional" value={overrides.clientAddr2 ?? ''} onChange={e => setOvr('clientAddr2', e.target.value)} />
+                        <input
+                          className="input text-xs w-full"
+                          placeholder="Optional"
+                          value={overrides.clientAddr2 ?? ''}
+                          onChange={e => setOvr('clientAddr2', e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Phase summary table */}
-                <div className="bg-white rounded-lg border border-sand-2 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-sand-2 flex items-center justify-between">
-                    <div className="text-sm font-semibold">Phase Summary</div>
-                    <span className="text-2xs text-olive">{MONTH_OPTIONS.find(m => m.key === invMk)?.label}</span>
+                  {/* Notes */}
+                  <div className="bg-white rounded border border-sand-2 p-3">
+                    <label className="field-label">Invoice Notes</label>
+                    <textarea
+                      className="input text-xs w-full mt-1"
+                      rows={3}
+                      value={overrides.notes ?? settings.invoicing?.defaultNotes ?? 'Thank you for the opportunity to be of service.\nPlease reference the invoice number on your payment.'}
+                      onChange={e => setOvr('notes', e.target.value)}
+                    />
                   </div>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-sand text-2xs text-olive uppercase tracking-wider">
-                        <th className="text-left px-4 py-2">Phase</th>
-                        <th className="text-right px-2 py-2">Contract</th>
-                        <th className="text-right px-2 py-2">Prev Billed</th>
-                        <th className="text-right px-2 py-2">This Invoice</th>
-                        <th className="text-right px-4 py-2">Remaining</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoiceData?.lineItems.map((item, i) => (
-                        <tr key={item.id ?? i} className="border-t border-sand-2 hover:bg-sand/30">
-                          <td className="px-4 py-2">
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="text-2xs px-1.5 py-0.5 rounded text-white font-semibold" style={{ background: '#736F4C' }}>{item.scopeCode}</span>
-                              {item.phaseName}
-                            </span>
-                          </td>
-                          <td className="text-right px-2 py-2 text-olive">{fmt(item.contractFee)}</td>
-                          <td className="text-right px-2 py-2 text-olive">{fmt(item.prevBilled)}</td>
-                          <td className="text-right px-2 py-2 font-semibold" style={{ color: item.curBilling > 0 ? '#BD6439' : undefined }}>
-                            {fmt(item.curBilling)}
-                          </td>
-                          <td className="text-right px-4 py-2 text-olive">{fmt(item.remaining)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-[#3D3935] bg-sand font-semibold">
-                        <td className="px-4 py-2">TOTAL</td>
-                        <td className="text-right px-2 py-2">{fmt(invoiceData?.totals.totalContract)}</td>
-                        <td className="text-right px-2 py-2">{fmt(invoiceData?.totals.totalPrev)}</td>
-                        <td className="text-right px-2 py-2 text-terracotta font-bold">{fmt(invoiceData?.totals.totalCur)}</td>
-                        <td className="text-right px-4 py-2">{fmt(invoiceData?.totals.totalRem)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
 
-                {/* Notes */}
-                <div className="bg-white rounded-lg border border-sand-2 p-5">
-                  <label className="field-label">Invoice Notes</label>
-                  <textarea
-                    className="input text-xs w-full mt-1"
-                    rows={3}
-                    value={overrides.notes ?? settings.invoicing?.defaultNotes ?? 'Thank you for the opportunity to be of service.\nPlease reference the invoice number on your payment.'}
-                    onChange={e => setOvr('notes', e.target.value)}
-                  />
-                </div>
-
-                {/* Action */}
-                <div className="flex justify-end">
+                  {/* Download */}
                   <button
                     onClick={generateIndividual}
                     disabled={generating}
-                    className="btn btn-primary px-6 py-2 text-sm"
+                    className="btn btn-primary w-full text-sm py-2"
                   >
                     {generating
                       ? <><i className="ti ti-loader-2 spin mr-2" />Generating…</>
@@ -492,8 +515,49 @@ export default function InvoiceTab({ appState, mutate }) {
                     }
                   </button>
                 </div>
-              </>
-            )}
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-6 text-olive text-xs text-center">
+                  Select a project above to build an invoice
+                </div>
+              )}
+            </div>
+
+            {/* Right panel: WYSIWYG PDF preview */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-neutral-300">
+              {!selectedProject ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center text-neutral-500">
+                    <i className="ti ti-file-invoice text-5xl block mb-3 opacity-30" />
+                    <div className="text-sm">Select a project to preview the invoice</div>
+                  </div>
+                </div>
+              ) : !previewData ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <i className="ti ti-loader-2 spin text-neutral-500 text-2xl" />
+                </div>
+              ) : (
+                <BlobProvider document={<InvoicePDF data={previewData} />}>
+                  {({ url, loading }) => (
+                    <div className="flex-1 flex flex-col h-full min-h-0">
+                      {loading && (
+                        <div className="flex-shrink-0 bg-sand/80 px-3 py-1 text-2xs text-olive flex items-center gap-2">
+                          <i className="ti ti-loader-2 spin text-xs" />
+                          Updating preview…
+                        </div>
+                      )}
+                      {url && (
+                        <iframe
+                          src={url}
+                          className="flex-1 min-h-0 border-none w-full"
+                          title="Invoice Preview"
+                        />
+                      )}
+                    </div>
+                  )}
+                </BlobProvider>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -652,18 +716,16 @@ export default function InvoiceTab({ appState, mutate }) {
 function ClientStatementView({ clientKey, projects, invoices, settings, scopeTypes }) {
   const [generating, setGenerating] = useState(false)
 
-  const clientProjects  = projects.filter(p => (p._client || p.client) === clientKey)
-  const clientInvoices  = invoices.filter(inv => {
+  const clientProjects = projects.filter(p => (p._client || p.client) === clientKey)
+  const clientInvoices = invoices.filter(inv => {
     const match = projects.find(p => p.project === inv.project || String(p.id) === String(inv.projectId))
     return match && (match._client || match.client) === clientKey
   })
-  const openInvoices  = clientInvoices.filter(i => !i.paid)
-  const totalOpen     = openInvoices.reduce((s, i) => s + (i.amount || 0), 0)
+  const openInvoices = clientInvoices.filter(i => !i.paid)
+  const totalOpen    = openInvoices.reduce((s, i) => s + (i.amount || 0), 0)
 
   const generateStatement = async () => {
     setGenerating(true)
-    // Client Statement PDF will be built in a future iteration.
-    // For now we note this is pending.
     await new Promise(r => setTimeout(r, 500))
     setGenerating(false)
     alert('Client Statement PDF is coming in the next update.')
