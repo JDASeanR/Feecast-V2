@@ -394,11 +394,12 @@ export default function InvoicePDF({ data }) {
           </View>
         </View>
 
-        {/* Notes */}
+        {/* Notes — label and text on same line */}
         {notes ? (
-          <View style={{ marginTop:noteMT, paddingTop:10, borderTopWidth:0.5, borderTopColor:S }}>
-            <Text style={styles.notesTitle}>NOTES</Text>
-            <Text style={styles.notesText}>{notes}</Text>
+          <View style={{ marginTop:noteMT, paddingTop:10, borderTopWidth:0.5, borderTopColor:S,
+            flexDirection:'row', gap:10 }}>
+            <Text style={[styles.notesTitle, { marginBottom:0, paddingTop:1, flexShrink:0 }]}>NOTES</Text>
+            <Text style={[styles.notesText, { flex:1 }]}>{notes}</Text>
           </View>
         ) : null}
 
