@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   // ── Header ──
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
   headerLine: { flex: 1, height: 1.5, backgroundColor: T },
-  logo: { width: 90, height: 90, marginHorizontal: 14 },
+  logo: { width: 112, height: 112, marginHorizontal: 14 },
 
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
   infoLeft: { width: 160 },
@@ -158,15 +158,13 @@ export default function InvoicePDF({ data }) {
           <View style={styles.headerLine} />
         </View>
 
-        {/* Firm info row */}
+        {/* Firm info row — logo already contains the firm name/tagline */}
         <View style={styles.infoRow}>
           <View style={styles.infoLeft}>
             {firm.address1 ? <Text style={styles.infoAddr}>{firm.address1.toUpperCase()}</Text> : null}
             {firm.address2 ? <Text style={styles.infoAddr}>{firm.address2.toUpperCase()}</Text> : null}
           </View>
-          <View style={styles.infoCenter}>
-            <Text style={styles.infoFirmName}>{firm.fullName || 'JEFFREY DeMURE + ASSOCIATES'}</Text>
-          </View>
+          <View style={styles.infoCenter} />
           <View style={styles.infoRight}>
             {firm.phone ? <Text style={styles.infoAddr}>{firm.phone}</Text> : null}
             {firm.website ? <Text style={styles.infoAddr}>{firm.website.toUpperCase()}</Text> : null}
