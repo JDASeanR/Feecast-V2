@@ -119,6 +119,17 @@ export default function OpportunitiesTab({ appState, mutate }) {
   const toggleFlag    = id => mutate(prev => ({ ...prev, opportunities: prev.opportunities.map(o => o.id === id ? { ...o, flag: !o.flag } : o) }))
   const toggleArchive = id => mutate(prev => ({ ...prev, opportunities: prev.opportunities.map(o => o.id === id ? { ...o, archived: !o.archived } : o) }))
 
+  const addClient = useCallback(client => {
+    mutate(prev => {
+      const existing = prev.settings.clients || []
+      const newId = Math.max(0, ...existing.map(c => c.id || 0)) + 1
+      return {
+        ...prev,
+        settings: { ...prev.settings, clients: [...existing, { ...client, id: newId, active: true }] }
+      }
+    })
+  }, [mutate])
+
   const saveAlloc = useCallback((id, monthly) => {
     mutate(prev => ({ ...prev, opportunities: prev.opportunities.map(o => o.id === id ? { ...o, monthly } : o) }))
     setAllocOpp(null)
@@ -358,6 +369,7 @@ export default function OpportunitiesTab({ appState, mutate }) {
           opp={editingOpp === 'new' ? null : editingOpp}
           settings={settings}
           onSave={saveOpp}
+          onAddClient={addClient}
           onClose={() => setEditingOpp(null)}
         />
       )}
@@ -383,15 +395,33 @@ export default function OpportunitiesTab({ appState, mutate }) {
 }
 
 // ── OppModal ──────────────────────────────────────────────────────────────────
-function OppModal({ opp: ex, settings, onSave, onClose }) {
+function OppModal({ opp: ex, settings, onSave, onAddClient, onClose }) {
   const pmList   = (settings.pms || []).map(p => p.name)
   const typeList = settings.projectTypes || []
+  const clients  = settings.clients || []
 
   const [form, setForm] = useState(ex ? { ...ex } : {
     pm: pmList[0] || '', name: '', client: '', type: typeList[0]?.code || 'SFD',
     fee: 0, confidence: 50, status: '01 Radar', targetStart: '', notes: '', flag: false
   })
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
+
+  const [addingClient, setAddingClient]     = useState(false)
+  const [newClientName, setNewClientName]   = useState('')
+  const [newClientParent, setNewClientParent] = useState('')
+
+  const clientOptions  = clients.filter(c => !c.parent)
+  const clientChildren = clients.filter(c => c.parent)
+
+  const confirmNewClient = () => {
+    const name = newClientName.trim()
+    if (!name) return
+    onAddClient({ name, parent: newClientParent || null })
+    set('client', name)
+    setAddingClient(false)
+    setNewClientName('')
+    setNewClientParent('')
+  }
 
   return (
     <Modal title={ex ? 'Edit opportunity' : 'New opportunity'} onClose={onClose}>
@@ -410,7 +440,49 @@ function OppModal({ opp: ex, settings, onSave, onClose }) {
         </div>
         <div className="col-span-2">
           <label className="field-label">Client</label>
-          <input value={form.client} onChange={e => set('client', e.target.value)} className="input text-xs w-full" />
+          {addingClient ? (
+            <div className="space-y-1.5">
+              <input
+                autoFocus
+                placeholder="New client name"
+                value={newClientName}
+                onChange={e => setNewClientName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') confirmNewClient(); if (e.key === 'Escape') setAddingClient(false) }}
+                className="input text-xs w-full"
+              />
+              <select value={newClientParent} onChange={e => setNewClientParent(e.target.value)} className="select text-xs w-full">
+                <option value="">— No parent (top-level) —</option>
+                {clientOptions.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+              <div className="flex gap-1">
+                <button onClick={confirmNewClient} className="btn btn-primary text-xs"><i className="ti ti-check" /> Add client</button>
+                <button onClick={() => setAddingClient(false)} className="btn text-xs">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <select
+              value={form.client}
+              onChange={e => {
+                if (e.target.value === '__add__') { setAddingClient(true); setNewClientName(''); setNewClientParent('') }
+                else set('client', e.target.value)
+              }}
+              className="select text-xs w-full"
+            >
+              <option value="">— Select client —</option>
+              {clientOptions.map(c => {
+                const kids = clientChildren.filter(k => k.parent === c.id || k.parent === c.name)
+                if (kids.length) return (
+                  <optgroup key={c.id} label={c.name}>
+                    <option value={c.name}>{c.name} (Corporate)</option>
+                    {kids.map(k => <option key={k.id} value={k.name}>↳ {k.name}</option>)}
+                  </optgroup>
+                )
+                return <option key={c.id} value={c.name}>{c.name}</option>
+              })}
+              <option disabled>──────────</option>
+              <option value="__add__">+ Add new client…</option>
+            </select>
+          )}
         </div>
         <div className="col-span-2">
           <label className="field-label">Opportunity name</label>
