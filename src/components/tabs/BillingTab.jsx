@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { fmt, clsx, CY, CM, CUR_MK, mkLabel, nextMonthKey, useLocalPref, getMonthlyGoal } from '../../lib/utils'
+import { supabase } from '../../lib/supabase'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const N_MONTHS = 18
@@ -207,6 +208,15 @@ export default function BillingTab({ appState, mutate, session }) {
       }))
     }))
   }, [mutate])
+
+  const myEmail = session?.user?.email || ''
+
+  const sendChatMessage = useCallback(async (text) => {
+    if (!text || !myEmail) return
+    try {
+      await supabase.from('messages').insert({ user_email: myEmail, text })
+    } catch (e) { console.error('Chat notify failed:', e) }
+  }, [myEmail])
 
   const togglePM = key =>
     setExpandedPM(prev => ({ ...prev, [key]: prev[key] === false ? true : false }))
@@ -585,6 +595,8 @@ export default function BillingTab({ appState, mutate, session }) {
                         monthlyGoal={monthlyGoal}
                         activeMk={activeMk}
                         lockedMonths={lockedMonths}
+                        pms={settings.pms || []}
+                        sendChatMessage={sendChatMessage}
                         setPct={setPct}
                         setDone={setDone}
                         setBillingConf={setBillingConf}
@@ -639,7 +651,8 @@ function SummaryCell({ label, bold, sticky }) {
 }
 
 // ── ProjectRows ───────────────────────────────────────────────────────────────
-function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, activeMk, lockedMonths, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
+function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, activeMk, lockedMonths, pms, sendChatMessage, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
+  const pmHandle = (pms.find(pm => pm.name === p.pm)?.email || '').split('@')[0] || ''
   const pFee = p.phases.reduce((s, ph) => s + phFeeFC(ph), 0)
   const pTots = visMonths.map(m =>
     p.phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
@@ -656,6 +669,9 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             flagBy={p.flagBy}
             flagAt={p.flagAt}
             isProject
+            pmHandle={pmHandle}
+            context={p.project}
+            sendChatMessage={sendChatMessage}
             onSave={data => setFlag(p.id, null, data)}
           />
         </td>
@@ -697,6 +713,8 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             visMonths={visMonths}
             activeMk={activeMk}
             lockedMonths={lockedMonths}
+            pmHandle={pmHandle}
+            sendChatMessage={sendChatMessage}
             setPct={setPct}
             setDone={setDone}
             setBillingConf={setBillingConf}
@@ -710,7 +728,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
 }
 
 // ── AddendumGroup ─────────────────────────────────────────────────────────────
-function AddendumGroup({ addKey, phases, project: p, visMonths, activeMk, lockedMonths, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
+function AddendumGroup({ addKey, phases, project: p, visMonths, activeMk, lockedMonths, pmHandle, sendChatMessage, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
   return (
     <>
       {/* Addendum header (skip for main group) */}
@@ -752,6 +770,8 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, activeMk, locked
           indent={addKey !== '__main__' ? 64 : 50}
           activeMk={activeMk}
           lockedMonths={lockedMonths}
+          pmHandle={pmHandle}
+          sendChatMessage={sendChatMessage}
           setPct={setPct}
           setDone={setDone}
           setBillingConf={setBillingConf}
@@ -767,7 +787,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, activeMk, locked
 const HOLD_LABELS = { 'not-authorized': 'Not Authorized', 'awaiting-approval': 'Awaiting Approval' }
 const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-clock' }
 
-function PhaseRow({ phase: ph, project: p, visMonths, indent, activeMk, lockedMonths, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
+function PhaseRow({ phase: ph, project: p, visMonths, indent, activeMk, lockedMonths, pmHandle, sendChatMessage, setPct, setDone, setBillingConf, setHoldStatus, setFlag }) {
   const [holdOpen, setHoldOpen] = useState(false)
   const [holdPos, setHoldPos]   = useState({ top: 0, left: 0 })
   const holdRef = useRef(null)
@@ -805,6 +825,9 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, activeMk, lockedMo
           note={ph.flagNote}
           flagBy={ph.flagBy}
           flagAt={ph.flagAt}
+          pmHandle={pmHandle}
+          context={`${p.project} · ${ph.name}`}
+          sendChatMessage={sendChatMessage}
           onSave={data => setFlag(p.id, ph.id, data)}
         />
       </td>
@@ -1033,7 +1056,7 @@ function flagTooltip({ note, newProject, flagBy, flagAt }) {
   return parts.join('\n') || 'Flagged'
 }
 
-function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, onSave }) {
+function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, pmHandle, context, sendChatMessage, onSave }) {
   const [showPopup, setShowPopup] = useState(false)
 
   const handleClick = () => {
@@ -1059,6 +1082,9 @@ function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, onSave
       {showPopup && createPortal(
         <FlagPopup
           isProject={isProject}
+          pmHandle={pmHandle}
+          context={context}
+          sendChatMessage={sendChatMessage}
           onSave={data => { onSave(data); setShowPopup(false) }}
           onClose={() => setShowPopup(false)}
         />,
@@ -1069,9 +1095,10 @@ function FlagCell({ flagged, note, newProject, flagBy, flagAt, isProject, onSave
 }
 
 // ── FlagPopup ─────────────────────────────────────────────────────────────────
-function FlagPopup({ isProject, onSave, onClose }) {
+function FlagPopup({ isProject, pmHandle, context, sendChatMessage, onSave, onClose }) {
   const [note, setNote] = useState('')
   const [isNew, setIsNew] = useState(false)
+  const [notify, setNotify] = useState(!!pmHandle)
   const ref = useRef(null)
 
   useEffect(() => {
@@ -1081,6 +1108,17 @@ function FlagPopup({ isProject, onSave, onClose }) {
   }, [onClose])
 
   const canSave = isNew || note.trim().length > 0
+
+  const handleSave = () => {
+    const data = { flag: true, note: isNew ? '' : note.trim(), newProject: isNew }
+    onSave(data)
+    if (notify && pmHandle) {
+      const msg = isNew
+        ? `@${pmHandle} — New project flag: ${context}`
+        : `@${pmHandle} — Flag on ${context}: "${note.trim()}"`
+      sendChatMessage?.(msg)
+    }
+  }
 
   return (
     <>
@@ -1120,6 +1158,13 @@ function FlagPopup({ isProject, onSave, onClose }) {
         />
       )}
 
+      {pmHandle && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#736F4C', marginTop: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={notify} onChange={e => setNotify(e.target.checked)} />
+          Notify <strong style={{ color: '#BD6439' }}>@{pmHandle}</strong> in chat
+        </label>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
         <button
           onClick={onClose}
@@ -1131,7 +1176,7 @@ function FlagPopup({ isProject, onSave, onClose }) {
         >Cancel</button>
         <button
           disabled={!canSave}
-          onClick={() => onSave({ flag: true, note: isNew ? '' : note.trim(), newProject: isNew })}
+          onClick={handleSave}
           style={{
             fontSize: 11, padding: '4px 12px', borderRadius: 4,
             border: 'none', background: canSave ? '#c0392b' : '#ccc',
