@@ -125,7 +125,7 @@ export default function OpportunitiesTab({ appState, mutate }) {
       const newId = Math.max(0, ...existing.map(c => c.id || 0)) + 1
       return {
         ...prev,
-        settings: { ...prev.settings, clients: [...existing, { ...client, id: newId, active: true }] }
+        settings: { ...prev.settings, clients: [...existing, { ...client, id: newId, active: true }].sort((a, b) => (a.name || '').localeCompare(b.name || '')) }
       }
     })
   }, [mutate])

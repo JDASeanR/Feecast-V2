@@ -128,7 +128,7 @@ export default function ProjectsTab({ appState, mutate }) {
         ...prev,
         settings: {
           ...prev.settings,
-          clients: [...existing, { ...client, id: newId, active: true }]
+          clients: [...existing, { ...client, id: newId, active: true }].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         }
       }
     })

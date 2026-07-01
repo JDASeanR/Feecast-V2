@@ -207,7 +207,7 @@ export default function SettingsModal({ appState, mutate, onClose, doSync, doSyn
                     )
                   })}
                 </div>
-                <AddRow onAdd={vals=>set('clients',[...(local.clients||[]),{id:nextId(local.clients),name:vals[0],parent:null,active:true}])}
+                <AddRow onAdd={vals=>set('clients',[...(local.clients||[]),{id:nextId(local.clients),name:vals[0],parent:null,active:true}].sort((a,b)=>(a.name||'').localeCompare(b.name||'')))}
                   placeholders={['Client name']} widths={['flex-1']} />
               </Section>
             )}
