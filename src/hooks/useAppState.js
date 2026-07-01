@@ -13,7 +13,7 @@ const DEFAULT_STATE = {
     scopeTypes:   [],
     projectTypes: [],
     statusTypes:  [],
-    billing:      { annualGoal: 4740000 },
+    billing:      { annualGoal: 4740000, activeMonth: null, lockedMonths: [] },
     firm:         { name: 'Jeffrey DeMure + Associates', digest: {} },
     hourly:       {},
   },

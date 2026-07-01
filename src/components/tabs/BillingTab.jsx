@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { fmt, clsx, CY, CM, CUR_MK, useLocalPref, getMonthlyGoal } from '../../lib/utils'
+import { fmt, clsx, CY, CM, CUR_MK, mkLabel, nextMonthKey, useLocalPref, getMonthlyGoal } from '../../lib/utils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const N_MONTHS = 18
@@ -10,21 +10,21 @@ const COL_FEE  = 72
 const COL_MO   = 66
 
 // ── Month helpers ─────────────────────────────────────────────────────────────
-function buildMonths() {
+function buildMonths(activeMk) {
+  const [ay, am] = activeMk.split('-').map(Number)
   const months = []
   // Start 6 months back so past months are available when toggled on
   for (let i = -6; i < N_MONTHS; i++) {
-    const d   = new Date(CY, CM - 1 + i, 1)
+    const d   = new Date(ay, am - 1 + i, 1)
     const y   = d.getFullYear()
     const m   = d.getMonth() + 1
     const key = `${y}-${String(m).padStart(2, '0')}`
-    const isPast = key < CUR_MK
+    const isPast = key < activeMk
     const label  = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
     months.push({ key, label, isPast })
   }
   return months
 }
-const ALL_MONTHS = buildMonths()
 
 // ── Phase calculations ────────────────────────────────────────────────────────
 const phCAEst  = ph => ph.scope === 'CA' ? (ph.fee || 0) * (ph.caMonths || 12) : 0
@@ -41,9 +41,9 @@ function phYTD(ph) {
 
 const phRem = ph => Math.max(0, phFeeFC(ph) - (ph.billed || 0) - phYTD(ph))
 
-const phAlloc = ph =>
+const phAlloc = (ph, activeMk) =>
   Object.entries(ph.monthly || {})
-    .filter(([mk]) => mk >= CUR_MK)
+    .filter(([mk]) => mk >= activeMk)
     .reduce((s, [, v]) => s + (v || 0), 0)
 
 // ── Client resolution (ADD# → previous real client) ───────────────────────────
@@ -60,9 +60,13 @@ function resolveClient(clientStr, allProjects, idx) {
 // ── BillingTab ────────────────────────────────────────────────────────────────
 export default function BillingTab({ appState, mutate, session }) {
   const { projects, settings } = appState
-  const pmList    = (settings.pms || []).map(p => p.name)
+  const pmList      = (settings.pms || []).map(p => p.name)
   const monthlyGoal = settings.billing?.monthlyGoal || 395000
   const hourlyData  = settings.billing?.hourlyByMonth || {}
+  const activeMk    = settings.billing?.activeMonth ?? CUR_MK
+  const lockedMonths = settings.billing?.lockedMonths ?? []
+
+  const ALL_MONTHS = buildMonths(activeMk)
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [filterPM,       setFilterPM]       = useLocalPref('bill.filterPM', 'ALL')
@@ -263,7 +267,7 @@ export default function BillingTab({ appState, mutate, session }) {
                     ...ph,
                     monthly: {
                       ...ph.monthly,
-                      [CUR_MK]: (ph.monthly?.[CUR_MK] || 0) + rem
+                      [activeMk]: (ph.monthly?.[activeMk] || 0) + rem
                     }
                   }
                 })
@@ -274,6 +278,35 @@ export default function BillingTab({ appState, mutate, session }) {
         >
           <i className="ti ti-refresh" /> EOY rollover
         </button>
+
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs font-semibold flex items-center gap-1.5"
+            style={{ color: '#BD6439' }}>
+            <i className="ti ti-calendar-event" style={{ fontSize: 13 }} />
+            {mkLabel(activeMk)} · Active
+          </span>
+          <button
+            onClick={() => {
+              const nextMk = nextMonthKey(activeMk)
+              if (!confirm(`Close ${mkLabel(activeMk)} and set ${mkLabel(nextMk)} as the active month?`)) return
+              mutate(prev => ({
+                ...prev,
+                settings: {
+                  ...prev.settings,
+                  billing: {
+                    ...prev.settings.billing,
+                    activeMonth: nextMk,
+                    lockedMonths: [...(prev.settings.billing?.lockedMonths || []), activeMk],
+                  }
+                }
+              }))
+            }}
+            className="btn text-xs"
+            style={{ color: '#BD6439', borderColor: 'rgba(189,100,57,0.3)' }}
+          >
+            Close {mkLabel(activeMk)} →
+          </button>
+        </div>
       </div>
 
       {/* Hint */}
@@ -302,19 +335,45 @@ export default function BillingTab({ appState, mutate, session }) {
                 style={{ minWidth: COL_FEE }}>
                 Fee
               </th>
-              {visMonths.map(m => (
-                <th key={m.key}
-                  className={clsx(
-                    'text-center font-semibold px-1 py-2 border-b border-sand-3',
-                    m.key === CUR_MK && 'bg-terracotta/15',
-                    m.isPast && 'text-dark-3'
-                  )}
-                  style={{ minWidth: COL_MO }}>
-                  {m.key === CUR_MK
-                    ? <strong>{m.label}</strong>
-                    : m.label}
-                </th>
-              ))}
+              {visMonths.map(m => {
+                const isLocked = lockedMonths.includes(m.key)
+                return (
+                  <th key={m.key}
+                    className={clsx(
+                      'text-center font-semibold px-1 py-2 border-b border-sand-3',
+                      m.key === activeMk && 'bg-terracotta/15',
+                      m.isPast && !isLocked && 'text-dark-3'
+                    )}
+                    style={{ minWidth: COL_MO }}>
+                    <div className="flex flex-col items-center gap-0.5">
+                      {m.key === activeMk
+                        ? <strong>{m.label}</strong>
+                        : m.label}
+                      {isLocked && (
+                        <button
+                          title={`${m.label} is locked — click to unlock`}
+                          onClick={() => {
+                            if (!confirm(`Unlock ${mkLabel(m.key)} for editing?`)) return
+                            mutate(prev => ({
+                              ...prev,
+                              settings: {
+                                ...prev.settings,
+                                billing: {
+                                  ...prev.settings.billing,
+                                  lockedMonths: (prev.settings.billing?.lockedMonths || []).filter(mk => mk !== m.key),
+                                }
+                              }
+                            }))
+                          }}
+                          style={{ fontSize: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#736F4C', lineHeight: 1 }}
+                        >
+                          <i className="ti ti-lock" />
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                )
+              })}
             </tr>
 
             {/* Monthly total */}
@@ -328,7 +387,7 @@ export default function BillingTab({ appState, mutate, session }) {
                 return (
                   <td key={m.key}
                     className={clsx('text-center font-bold text-xs px-1',
-                      m.key === CUR_MK && 'bg-terracotta/15')}
+                      m.key === activeMk && 'bg-terracotta/15')}
                     style={{ color: total >= getMonthlyGoal(m.key, settings) ? '#2d7a3a' : '#BD6439' }}>
                     {fmt(total)}
                   </td>
@@ -343,24 +402,29 @@ export default function BillingTab({ appState, mutate, session }) {
               <td />
               {visMonths.map(m => {
                 const v = hourlyData[m.key] || 0
+                const isLocked = lockedMonths.includes(m.key)
                 return (
                   <td key={m.key}
                     className={clsx('px-0.5 py-0.5 text-center',
-                      m.key === CUR_MK && 'bg-terracotta/15')}
+                      m.key === activeMk && 'bg-terracotta/15')}
                     style={{ minWidth: COL_MO }}>
-                    <input
-                      type="number"
-                      min={0}
-                      step={100}
-                      defaultValue={v || ''}
-                      placeholder="—"
-                      onBlur={e => setHourly(m.key, parseFloat(e.target.value) || 0)}
-                      className={clsx(
-                        'w-14 text-center text-xs px-1 py-0.5 rounded border bg-transparent',
-                        'border-transparent hover:border-sand-3 focus:border-terracotta focus:outline-none',
-                        v > 0 && 'text-blue-600 font-semibold'
-                      )}
-                    />
+                    {isLocked ? (
+                      <span className="text-xs text-dark-3 opacity-60">{v > 0 ? fmt(v) : '—'}</span>
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        step={100}
+                        defaultValue={v || ''}
+                        placeholder="—"
+                        onBlur={e => setHourly(m.key, parseFloat(e.target.value) || 0)}
+                        className={clsx(
+                          'w-14 text-center text-xs px-1 py-0.5 rounded border bg-transparent',
+                          'border-transparent hover:border-sand-3 focus:border-terracotta focus:outline-none',
+                          v > 0 && 'text-blue-600 font-semibold'
+                        )}
+                      />
+                    )}
                   </td>
                 )
               })}
@@ -376,7 +440,7 @@ export default function BillingTab({ appState, mutate, session }) {
                 return (
                   <td key={m.key}
                     className={clsx('text-center font-bold text-xs px-1',
-                      m.key === CUR_MK && 'bg-terracotta/15')}
+                      m.key === activeMk && 'bg-terracotta/15')}
                     style={{ color: t >= getMonthlyGoal(m.key, settings) ? '#2d7a3a' : '#BD6439' }}>
                     {fmt(t)}
                   </td>
@@ -397,7 +461,7 @@ export default function BillingTab({ appState, mutate, session }) {
                 return (
                   <td key={m.key}
                     className={clsx('text-center text-2xs px-1',
-                      m.key === CUR_MK && 'bg-terracotta/15')}
+                      m.key === activeMk && 'bg-terracotta/15')}
                     style={{ color: diff >= 0 ? '#2d7a3a' : '#BD6439' }}>
                     {diff >= 0 ? '+' : ''}{fmt(diff)}
                   </td>
@@ -478,6 +542,8 @@ export default function BillingTab({ appState, mutate, session }) {
                         showPhases={showPhases}
                         hideBilledOut={hideBilledOut}
                         monthlyGoal={monthlyGoal}
+                        activeMk={activeMk}
+                        lockedMonths={lockedMonths}
                         setPct={setPct}
                         setBillingConf={setBillingConf}
                         setHoldStatus={setHoldStatus}
@@ -503,7 +569,7 @@ export default function BillingTab({ appState, mutate, session }) {
                 return (
                   <td key={m.key}
                     className={clsx('text-center font-bold text-xs px-1',
-                      m.key === CUR_MK && 'bg-terracotta/15')}>
+                      m.key === activeMk && 'bg-terracotta/15')}>
                     {t > 0 ? fmt(t) : ''}
                   </td>
                 )
@@ -531,7 +597,7 @@ function SummaryCell({ label, bold, sticky }) {
 }
 
 // ── ProjectRows ───────────────────────────────────────────────────────────────
-function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, setPct, setBillingConf, setHoldStatus, setFlag }) {
+function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthlyGoal, activeMk, lockedMonths, setPct, setBillingConf, setHoldStatus, setFlag }) {
   const pFee = p.phases.reduce((s, ph) => s + phFeeFC(ph), 0)
   const pTots = visMonths.map(m =>
     p.phases.reduce((s, ph) => s + (ph.monthly?.[m.key] || 0), 0))
@@ -562,7 +628,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
         {pTots.map((t, i) => (
           <td key={visMonths[i].key}
             className={clsx('text-center text-xs px-1 border-b border-sand-2',
-              visMonths[i].key === CUR_MK && 'bg-terracotta/15')}>
+              visMonths[i].key === activeMk && 'bg-terracotta/15')}>
             {t > 0 ? fmt(t) : ''}
           </td>
         ))}
@@ -587,6 +653,8 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
             phases={addGroups[addKey]}
             project={p}
             visMonths={visMonths}
+            activeMk={activeMk}
+            lockedMonths={lockedMonths}
             setPct={setPct}
             setBillingConf={setBillingConf}
             setHoldStatus={setHoldStatus}
@@ -599,7 +667,7 @@ function ProjectRows({ project: p, visMonths, showPhases, hideBilledOut, monthly
 }
 
 // ── AddendumGroup ─────────────────────────────────────────────────────────────
-function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBillingConf, setHoldStatus, setFlag }) {
+function AddendumGroup({ addKey, phases, project: p, visMonths, activeMk, lockedMonths, setPct, setBillingConf, setHoldStatus, setFlag }) {
   return (
     <>
       {/* Addendum header (skip for main group) */}
@@ -623,7 +691,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
             {addTots.map((t, i) => (
               <td key={visMonths[i].key}
                 className={clsx('text-center text-xs text-terracotta font-semibold px-1 border-b border-sand-2',
-                  visMonths[i].key === CUR_MK && 'bg-terracotta/15')}>
+                  visMonths[i].key === activeMk && 'bg-terracotta/15')}>
                 {t > 0 ? fmt(t) : ''}
               </td>
             ))}
@@ -639,6 +707,8 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
           project={p}
           visMonths={visMonths}
           indent={addKey !== '__main__' ? 64 : 50}
+          activeMk={activeMk}
+          lockedMonths={lockedMonths}
           setPct={setPct}
           setBillingConf={setBillingConf}
           setHoldStatus={setHoldStatus}
@@ -653,7 +723,7 @@ function AddendumGroup({ addKey, phases, project: p, visMonths, setPct, setBilli
 const HOLD_LABELS = { 'not-authorized': 'Not Authorized', 'awaiting-approval': 'Awaiting Approval' }
 const HOLD_ICONS  = { 'not-authorized': 'ti-lock', 'awaiting-approval': 'ti-clock' }
 
-function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBillingConf, setHoldStatus, setFlag }) {
+function PhaseRow({ phase: ph, project: p, visMonths, indent, activeMk, lockedMonths, setPct, setBillingConf, setHoldStatus, setFlag }) {
   const [holdOpen, setHoldOpen] = useState(false)
   const [holdPos, setHoldPos]   = useState({ top: 0, left: 0 })
   const holdRef = useRef(null)
@@ -661,7 +731,7 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
   const rem      = phRem(ph)
   const billedOut = rem <= 0
   const onHold   = !!ph.holdStatus
-  const alloc    = phAlloc(ph)
+  const alloc    = phAlloc(ph, activeMk)
   const fee      = phFeeFC(ph)
   const allocPct = billedOut ? 100 : fee > 0 ? Math.round(alloc / fee * 100) : 0
   const allocColor = billedOut ? '#2d7a3a'
@@ -712,7 +782,7 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
           )}
           {!billedOut && (
             <>
-              {!onHold && <ConfDots phId={ph.id} conf={ph.billingConf?.[CUR_MK] || null} onSet={setBillingConf} />}
+              {!onHold && !lockedMonths.includes(activeMk) && <ConfDots phId={ph.id} conf={ph.billingConf?.[activeMk] || null} onSet={setBillingConf} activeMk={activeMk} />}
               <div style={{ position: 'relative' }}>
                 <button
                   ref={holdBtnRef}
@@ -799,8 +869,9 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
           mk={m.key}
           phase={ph}
           project={p}
-          isCurMo={m.key === CUR_MK}
+          isCurMo={m.key === activeMk}
           billedOut={billedOut}
+          locked={lockedMonths.includes(m.key)}
           setPct={setPct}
         />
       ))}
@@ -809,7 +880,7 @@ function PhaseRow({ phase: ph, project: p, visMonths, indent, setPct, setBilling
 }
 
 // ── PctCell ───────────────────────────────────────────────────────────────────
-function PctCell({ mk, phase: ph, project: p, isCurMo, billedOut, setPct }) {
+function PctCell({ mk, phase: ph, project: p, isCurMo, billedOut, locked, setPct }) {
   const dollars = ph.monthly?.[mk] || 0
   const fee     = phFeeFC(ph)
   const pct     = fee > 0 ? Math.round(dollars / fee * 1000) / 10 : 0
@@ -838,8 +909,8 @@ function PctCell({ mk, phase: ph, project: p, isCurMo, billedOut, setPct }) {
       }}
     >
       <div className="flex flex-col items-center gap-0.5">
-        {billedOut || ph.done ? (
-          <span className="text-xs" style={{ color: ph.done ? '#888' : '#2d7a3a' }}>
+        {billedOut || ph.done || locked ? (
+          <span className="text-xs" style={{ color: locked ? '#aaa' : ph.done ? '#888' : '#2d7a3a' }}>
             {pct > 0 ? pct + '%' : '—'}
           </span>
         ) : (
@@ -872,7 +943,7 @@ function PctCell({ mk, phase: ph, project: p, isCurMo, billedOut, setPct }) {
 }
 
 // ── ConfDots ──────────────────────────────────────────────────────────────────
-function ConfDots({ phId, conf, onSet }) {
+function ConfDots({ phId, conf, onSet, activeMk }) {
   const dots = [
     { val: 'g', color: '#4a7c3f', title: 'On track' },
     { val: 'y', color: '#c9831a', title: 'Somewhat confident' },
@@ -884,7 +955,7 @@ function ConfDots({ phId, conf, onSet }) {
         <button
           key={d.val}
           title={d.title}
-          onClick={() => onSet(phId, CUR_MK, d.val)}
+          onClick={() => onSet(phId, activeMk, d.val)}
           className="w-2.5 h-2.5 rounded-full border transition-all"
           style={{
             background: d.color,

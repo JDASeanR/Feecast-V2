@@ -25,6 +25,12 @@ export const mkLabel = mk => {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
 }
 
+export const nextMonthKey = mk => {
+  const [y, m] = mk.split('-').map(Number)
+  const d = new Date(y, m, 1) // m (not m-1) advances one month
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 // Generate N rolling months starting from current month
 export const getRollingMonths = (n = 18) => {
   const months = []
