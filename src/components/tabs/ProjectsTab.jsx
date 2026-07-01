@@ -191,6 +191,13 @@ export default function ProjectsTab({ appState, mutate }) {
     setAllocModal(null)
   }, [mutate])
 
+  // Same persist logic reused by ProjectModal's inline alloc save
+  const saveAllocDirect = useCallback((projId, phId, monthly) => {
+    mutate(prev => ({ ...prev, projects: prev.projects.map(p => p.id !== projId ? p : {
+      ...p, phases: p.phases.map(ph => ph.id !== phId ? ph : { ...ph, monthly })
+    })}))
+  }, [mutate])
+
   const archCt = projects.filter(p => p.archived).length
   const totFee = filtered.reduce((s, p) => s + pFee(p), 0)
   const totRem = filtered.reduce((s, p) => s + pRem(p), 0)
@@ -397,6 +404,7 @@ export default function ProjectsTab({ appState, mutate }) {
           settings={settings}
           projects={projects}
           onSave={saveProject}
+          onSaveAlloc={saveAllocDirect}
           onAddClient={addClient}
           onClose={() => setEditingProject(null)}
         />
@@ -779,7 +787,7 @@ function AllocModal({ project: p, phase: ph, onSave, onClose }) {
 }
 
 // ── ProjectModal ──────────────────────────────────────────────────────────────
-function ProjectModal({ project: ex, settings, projects, onSave, onAddClient, onClose }) {
+function ProjectModal({ project: ex, settings, projects, onSave, onSaveAlloc, onAddClient, onClose }) {
   const pmList    = (settings.pms || []).map(p => p.name)
   const scopeList = settings.scopeTypes || []
   const statusList = settings.statusTypes || []
@@ -948,14 +956,15 @@ function ProjectModal({ project: ex, settings, projects, onSave, onAddClient, on
         </button>
       </div>
 
-      {/* Inline alloc modal — saves back into form state, not global */}
       {allocPhaseIdx !== null && (
         <AllocModal
           project={{ id: form.id || '__new__' }}
           phase={form.phases[allocPhaseIdx]}
           onSave={(_, __, monthly) => {
+            const ph = form.phases[allocPhaseIdx]
             setPhase(allocPhaseIdx, 'monthly', monthly)
             setAllocPhaseIdx(null)
+            if (form.id && ph.id) onSaveAlloc?.(form.id, ph.id, monthly)
           }}
           onClose={() => setAllocPhaseIdx(null)}
         />
