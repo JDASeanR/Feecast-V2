@@ -186,6 +186,7 @@ export default function InvoiceTab({ appState, mutate }) {
   const [warnDismissed,     setWarnDismissed]      = useState(false)
   const [collapsedClients,  setCollapsedClients]   = useState(new Set())
   const [previewData,       setPreviewData]        = useState(null)
+  const [showActiveOnly,    setShowActiveOnly]      = useState(true)
 
   const setOvr = useCallback((k, v) => setOverrides(o => ({ ...o, [k]: v })), [])
 
@@ -203,6 +204,14 @@ export default function InvoiceTab({ appState, mutate }) {
   const [invYear, invMonth] = invMk.split('-').map(Number)
   const eom  = endOfMonth(invYear, invMonth)
   const dueD = addDays(eom, 30)
+
+  const lockedMonths = settings.billing?.lockedMonths || []
+  const isMonthLocked = lockedMonths.includes(invMk)
+
+  const projHasRemaining = useCallback(p => {
+    const totals = buildTotals(buildLineItems(p, invMk))
+    return totals.totalRem > 1
+  }, [invMk])
 
   const billedProjects = useMemo(() =>
     activeProjects.filter(p => p.phases.some(ph => (ph.monthly?.[invMk] || 0) > 0)),
@@ -253,6 +262,16 @@ export default function InvoiceTab({ appState, mutate }) {
         projects: [...projs].sort((a, b) => (a.project || '').localeCompare(b.project || ''))
       }))
   }, [activeProjects])
+
+  const displayProjectsByClient = useMemo(() => {
+    if (!showActiveOnly) return projectsByClient
+    return projectsByClient
+      .map(({ client, projects: plist }) => ({
+        client,
+        projects: plist.filter(projHasRemaining)
+      }))
+      .filter(({ projects }) => projects.length > 0)
+  }, [projectsByClient, showActiveOnly, projHasRemaining])
 
   const previewIframeRef = useRef(null)
 
@@ -362,6 +381,28 @@ export default function InvoiceTab({ appState, mutate }) {
           ))}
         </select>
 
+        {/* Active-only toggle */}
+        <button
+          onClick={() => setShowActiveOnly(v => !v)}
+          className={clsx(
+            'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors',
+            showActiveOnly
+              ? 'bg-terracotta/10 text-terracotta border-terracotta/30'
+              : 'text-olive border-sand-3 hover:bg-sand-2'
+          )}
+        >
+          <i className={clsx('ti text-xs', showActiveOnly ? 'ti-filter-filled' : 'ti-filter')} />
+          Active only
+        </button>
+
+        {/* Locked month badge */}
+        {isMonthLocked && (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-sand-2 text-olive border border-sand-3">
+            <i className="ti ti-lock text-xs" />
+            Month closed in Billing
+          </span>
+        )}
+
       </div>
 
       {/* ── Body ── */}
@@ -379,7 +420,7 @@ export default function InvoiceTab({ appState, mutate }) {
                 <div className="px-3 py-2 bg-sand/60 border-b border-sand-2">
                   <span className="text-2xs font-semibold uppercase tracking-wider text-olive">Projects</span>
                 </div>
-                {projectsByClient.map(({ client, projects: plist }) => {
+                {displayProjectsByClient.map(({ client, projects: plist }) => {
                   const isMulti     = plist.length > 1
                   const isCollapsed = collapsedClients.has(client)
                   return (
