@@ -70,11 +70,16 @@ export function useAppState() {
         })
       }
 
+      const settings = stData.settings || DEFAULT_STATE.settings
+      if (settings.clients?.length) {
+        settings.clients = [...settings.clients].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      }
+
       setAppState({
         projects,
         invoices:      inv?.[0]?.data  || DEFAULT_STATE.invoices,
         opportunities: stData.opportunities || DEFAULT_STATE.opportunities,
-        settings:      stData.settings      || DEFAULT_STATE.settings,
+        settings,
         nextId,
       })
       lastSavedAt.current = Date.now()
