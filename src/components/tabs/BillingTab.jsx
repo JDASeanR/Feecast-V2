@@ -9,6 +9,19 @@ const COL_NAME = 168
 const COL_FEE  = 72
 const COL_MO   = 66
 
+// Fixed picker range: 24 months back → 18 months forward from real calendar month
+const PICKER_MONTHS = (() => {
+  const months = []
+  for (let i = -24; i <= 18; i++) {
+    const d = new Date(CY, CM - 1 + i, 1)
+    const y = d.getFullYear()
+    const m = d.getMonth() + 1
+    const key = `${y}-${String(m).padStart(2, '0')}`
+    months.push({ key, label: mkLabel(key) })
+  }
+  return months
+})()
+
 // ── Month helpers ─────────────────────────────────────────────────────────────
 function buildMonths(activeMk) {
   const [ay, am] = activeMk.split('-').map(Number)
@@ -280,11 +293,27 @@ export default function BillingTab({ appState, mutate, session }) {
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs font-semibold flex items-center gap-1.5"
+          <span className="text-xs font-semibold flex items-center gap-1"
             style={{ color: '#BD6439' }}>
             <i className="ti ti-calendar-event" style={{ fontSize: 13 }} />
-            {mkLabel(activeMk)} · Active
+            Active:
           </span>
+          <select
+            value={activeMk}
+            onChange={e => mutate(prev => ({
+              ...prev,
+              settings: {
+                ...prev.settings,
+                billing: { ...prev.settings.billing, activeMonth: e.target.value }
+              }
+            }))}
+            className="select text-xs font-semibold"
+            style={{ color: '#BD6439', paddingTop: 2, paddingBottom: 2 }}
+          >
+            {PICKER_MONTHS.map(m => (
+              <option key={m.key} value={m.key}>{m.label}</option>
+            ))}
+          </select>
           <button
             onClick={() => {
               const nextMk = nextMonthKey(activeMk)
