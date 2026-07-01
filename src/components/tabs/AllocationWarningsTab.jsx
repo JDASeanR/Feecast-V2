@@ -94,10 +94,10 @@ export default function AllocationWarningsTab({ appState, onNavigate }) {
   const heldPMs = [...new Set(filteredHeld.map(h => h.pm))]
 
   return (
-    <div className="p-4">
+    <div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="sticky top-0 z-20 bg-sand border-b border-sand-3 px-3 py-2 flex flex-wrap items-center gap-3">
         {allPMsInData.length > 1 && (
           <div className="flex items-center gap-2">
             <label className="text-xs text-olive font-medium">Filter PM</label>
@@ -109,20 +109,20 @@ export default function AllocationWarningsTab({ appState, onNavigate }) {
         )}
 
         {filteredWarnings.length > 0 && (
-          <div className="flex items-center gap-3 flex-1 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-            <i className="ti ti-alert-triangle text-warning text-xl" />
-            <div className="text-xs">
-              <strong>{filteredWarnings.length} allocation mismatch{filteredWarnings.length !== 1 ? 'es' : ''}</strong>
-              {underCount > 0 && <span className="ml-2 text-warning">{underCount} under-allocated</span>}
-              {overCount  > 0 && <span className="ml-2 text-flag">{overCount} over-allocated</span>}
-            </div>
+          <div className="flex items-center gap-2">
+            <i className="ti ti-alert-triangle text-warning" style={{ fontSize: 15 }} />
+            <span className="text-xs">
+              <strong>{filteredWarnings.length} mismatch{filteredWarnings.length !== 1 ? 'es' : ''}</strong>
+              {underCount > 0 && <span className="ml-2 text-warning">{underCount} under</span>}
+              {overCount  > 0 && <span className="ml-2 text-flag">{overCount} over</span>}
+            </span>
           </div>
         )}
       </div>
 
       {/* Warnings grouped by PM */}
       {filteredWarnings.length > 0 && (
-        <div className="space-y-2 mb-6">
+        <div className="mb-2">
           {warnPMs.map(pm => {
             const rows      = filteredWarnings.filter(w => w.pm === pm)
             const pmUnder   = rows.filter(w => w.issue === 'under').length
@@ -131,17 +131,19 @@ export default function AllocationWarningsTab({ appState, onNavigate }) {
             const collapsed = collapsedPMs[pm]
 
             return (
-              <div key={pm} className="border border-sand-3 rounded-lg overflow-hidden">
-                <button
+              <div key={pm}>
+                {/* PM header — matches BillingTab / ProjectsTab */}
+                <div
+                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] text-white cursor-pointer hover:bg-[#2a2a2a]"
                   onClick={() => togglePM(pm)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-sand-2 hover:bg-sand-3 transition-colors text-left"
                 >
-                  <i className={clsx('ti text-xs text-olive', collapsed ? 'ti-chevron-right' : 'ti-chevron-down')} />
-                  <span className="text-xs font-semibold flex-1">{pm}</span>
-                  <span className="text-2xs text-olive mr-2">{rows.length} issue{rows.length !== 1 ? 's' : ''} · gap {fmt(totalGap)}</span>
-                  {pmUnder > 0 && <span className="text-2xs px-1.5 py-0.5 rounded bg-orange-50 text-warning font-semibold">{pmUnder} under</span>}
-                  {pmOver  > 0 && <span className="text-2xs px-1.5 py-0.5 rounded bg-red-50 text-flag font-semibold">{pmOver} over</span>}
-                </button>
+                  <span className="text-2xs opacity-50">{collapsed ? '▸' : '▾'}</span>
+                  <span className="text-2xs opacity-60 uppercase tracking-wider">PM</span>
+                  <span className="text-sm font-bold flex-1">{pm}</span>
+                  <span className="text-2xs opacity-60 mr-2">{rows.length} issue{rows.length !== 1 ? 's' : ''} · gap {fmt(totalGap)}</span>
+                  {pmUnder > 0 && <span className="text-2xs px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 font-semibold">{pmUnder} under</span>}
+                  {pmOver  > 0 && <span className="text-2xs px-1.5 py-0.5 rounded bg-red-900/40 text-red-300 font-semibold">{pmOver} over</span>}
+                </div>
 
                 {!collapsed && (
                   <table className="data-table w-full">
@@ -198,67 +200,64 @@ export default function AllocationWarningsTab({ appState, onNavigate }) {
 
       {/* Held grouped by PM */}
       {filteredHeld.length > 0 && (
-        <div>
-          <div className="flex items-center gap-3 mb-3 p-3 rounded-lg"
-            style={{ background: 'rgba(107,114,128,0.08)', border: '1px solid rgba(107,114,128,0.2)' }}>
-            <i className="ti ti-lock" style={{ fontSize: 18, color: '#6b7280' }} />
-            <div className="text-xs">
-              <strong>{filteredHeld.length} phase{filteredHeld.length !== 1 ? 's' : ''} on hold</strong>
-              <span className="ml-2" style={{ color: '#6b7280' }}>Excluded from allocation warnings</span>
-            </div>
+        <div className={filteredWarnings.length > 0 ? 'border-t-2 border-sand-3 mt-2' : ''}>
+          {/* Held section label */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-sand-2 border-b border-sand-3">
+            <i className="ti ti-lock text-olive" style={{ fontSize: 13 }} />
+            <span className="text-2xs text-olive font-semibold uppercase tracking-wider">On Hold</span>
+            <span className="text-2xs text-olive">— excluded from warnings</span>
           </div>
 
-          <div className="space-y-2">
-            {heldPMs.map(pm => {
-              const rows      = filteredHeld.filter(h => h.pm === pm)
-              const key       = 'held_' + pm
-              const collapsed = collapsedPMs[key]
+          {heldPMs.map(pm => {
+            const rows      = filteredHeld.filter(h => h.pm === pm)
+            const key       = 'held_' + pm
+            const collapsed = collapsedPMs[key]
 
-              return (
-                <div key={pm} className="border border-sand-3 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => togglePM(key)}
-                    className="w-full flex items-center gap-2 px-3 py-2 bg-sand-2 hover:bg-sand-3 transition-colors text-left"
-                  >
-                    <i className={clsx('ti text-xs text-olive', collapsed ? 'ti-chevron-right' : 'ti-chevron-down')} />
-                    <span className="text-xs font-semibold flex-1">{pm}</span>
-                    <span className="text-2xs text-olive">{rows.length} phase{rows.length !== 1 ? 's' : ''} on hold</span>
-                  </button>
-
-                  {!collapsed && (
-                    <table className="data-table w-full">
-                      <thead>
-                        <tr>
-                          <th>Project</th>
-                          <th>Phase</th>
-                          <th style={{ width: 80 }}>Fee</th>
-                          <th style={{ width: 80 }}>Remaining</th>
-                          <th style={{ width: 160 }}>Hold Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((h, i) => (
-                          <tr key={i} style={{ opacity: 0.7 }}>
-                            <td className="px-2 text-xs font-semibold">{h.project}</td>
-                            <td className="px-2 text-xs text-olive">{h.phase}</td>
-                            <td className="px-2 text-xs">{fmt(h.fee)}</td>
-                            <td className="px-2 text-xs">{fmt(h.rem)}</td>
-                            <td className="px-2">
-                              <span className="text-2xs px-2 py-0.5 rounded font-semibold flex items-center gap-1 w-fit"
-                                style={{ background: 'rgba(107,114,128,0.1)', color: '#6b7280' }}>
-                                <i className={clsx('ti', HOLD_ICONS[h.holdStatus])} style={{ fontSize: 10 }} />
-                                {HOLD_LABELS[h.holdStatus]}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+            return (
+              <div key={pm}>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] text-white cursor-pointer hover:bg-[#2a2a2a]"
+                  onClick={() => togglePM(key)}
+                >
+                  <span className="text-2xs opacity-50">{collapsed ? '▸' : '▾'}</span>
+                  <span className="text-2xs opacity-60 uppercase tracking-wider">PM</span>
+                  <span className="text-sm font-bold flex-1">{pm}</span>
+                  <span className="text-2xs opacity-60">{rows.length} phase{rows.length !== 1 ? 's' : ''} on hold</span>
                 </div>
-              )
-            })}
-          </div>
+
+                {!collapsed && (
+                  <table className="data-table w-full">
+                    <thead>
+                      <tr>
+                        <th>Project</th>
+                        <th>Phase</th>
+                        <th style={{ width: 80 }}>Fee</th>
+                        <th style={{ width: 80 }}>Remaining</th>
+                        <th style={{ width: 160 }}>Hold Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((h, i) => (
+                        <tr key={i} style={{ opacity: 0.7 }}>
+                          <td className="px-2 text-xs font-semibold">{h.project}</td>
+                          <td className="px-2 text-xs text-olive">{h.phase}</td>
+                          <td className="px-2 text-xs">{fmt(h.fee)}</td>
+                          <td className="px-2 text-xs">{fmt(h.rem)}</td>
+                          <td className="px-2">
+                            <span className="text-2xs px-2 py-0.5 rounded font-semibold flex items-center gap-1 w-fit"
+                              style={{ background: 'rgba(107,114,128,0.1)', color: '#6b7280' }}>
+                              <i className={clsx('ti', HOLD_ICONS[h.holdStatus])} style={{ fontSize: 10 }} />
+                              {HOLD_LABELS[h.holdStatus]}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
