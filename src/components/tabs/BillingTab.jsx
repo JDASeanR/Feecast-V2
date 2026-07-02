@@ -276,32 +276,6 @@ export default function BillingTab({ appState, mutate, session }) {
           {showPhases ? 'Hide phases' : 'Show phases'}
         </button>
 
-        <button
-          onClick={() => {
-            if (!confirm('Roll over remaining allocations into current month for all active phases?')) return
-            mutate(prev => ({
-              ...prev,
-              projects: prev.projects.map(p => ({
-                ...p,
-                phases: p.phases.map(ph => {
-                  const rem = phRem(ph)
-                  if (rem <= 0) return ph
-                  return {
-                    ...ph,
-                    monthly: {
-                      ...ph.monthly,
-                      [activeMk]: (ph.monthly?.[activeMk] || 0) + rem
-                    }
-                  }
-                })
-              }))
-            }))
-          }}
-          className="btn text-xs text-warning border-warning/30 hover:bg-warning/10"
-        >
-          <i className="ti ti-refresh" /> EOY rollover
-        </button>
-
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs font-semibold flex items-center gap-1"
             style={{ color: '#BD6439' }}>
