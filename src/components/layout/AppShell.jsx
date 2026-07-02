@@ -486,7 +486,7 @@ export default function AppShell({ session, store }) {
           : activeTab === 'ar'
           ? <ARTab appState={appState} mutate={store.mutate} />
           : activeTab === 'followup'
-          ? <FollowUpTab appState={appState} mutate={store.mutate} />
+          ? <FollowUpTab appState={appState} mutate={store.mutate} currentUser={myEmail} />
           : activeTab === 'warnings'
           ? <AllocationWarningsTab appState={appState} onNavigate={setActiveTab} />
           : activeTab === 'invoices'
