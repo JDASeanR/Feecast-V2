@@ -297,18 +297,18 @@ export default function AppShell({ session, store }) {
       )}
 
       {/* Header — Graphite surface */}
-      <header style={{ background: '#3D3935', color: '#F5F5F1', minHeight: 64 }}
+      <header style={{ background: '#3D3935', color: '#F5F5F1', minHeight: 72 }}
         className="px-6 py-0 flex items-center gap-0 shrink-0">
 
         {/* JD+A horizontal lockup SVG */}
         <img
           src={jdaLogoVellum}
           alt="JD+A"
-          style={{ height: 28, width: 'auto', objectFit: 'contain', opacity: 0.92, marginRight: 20 }}
+          style={{ height: 42, width: 'auto', objectFit: 'contain', opacity: 0.92, marginRight: 24 }}
         />
 
         {/* Divider */}
-        <div style={{ width: 1, height: 32, background: 'rgba(245,245,241,0.18)', marginRight: 20, flexShrink: 0 }} />
+        <div style={{ width: 1, height: 40, background: 'rgba(245,245,241,0.18)', marginRight: 24, flexShrink: 0 }} />
 
         {/* Feecast wordmark */}
         <div className="font-display tracking-display" style={{ fontSize: 36, letterSpacing: '0.04em', lineHeight: 1 }}>
