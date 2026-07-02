@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { clsx, useLocalPref } from '../../lib/utils'
 import jdaLogoVellum from '../../assets/jda-logo-vellum.svg'
-import jdaLogoCharcoal from '../../assets/jda-logo-charcoal.svg
+import jdaLogoCharcoal from '../../assets/jda-logo-charcoal.svg'
 
 import PlaceholderTab from './PlaceholderTab.jsx'
 import SettingsModal from './SettingsModal.jsx'
