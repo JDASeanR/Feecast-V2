@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { pdf as renderPDF, BlobProvider } from '@react-pdf/renderer'
 import { fmt, clsx, CY, CM, CUR_MK, phFeeTotal } from '../../lib/utils'
 import InvoicePDF from './InvoicePDF.jsx'
-import jdaLogo from '../../assets/jda-logo.png'
+import jdaLogo from '../../assets/jda-logo-charcoal.svg'
 
 // ── Phase calculation helpers ─────────────────────────────────────────────────
 function phPrevBilled(ph, invMk) {
