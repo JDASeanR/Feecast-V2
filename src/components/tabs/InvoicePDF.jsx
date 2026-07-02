@@ -307,19 +307,19 @@ export default function InvoicePDF({ data }) {
           <View style={{ flex:C.contract, alignItems:'center' }}>
             <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold' }}>{fmtD(totalContract)}</Text>
           </View>
-          <View style={{ flex:C.prev, alignItems:'flex-end' }}>
+          <View style={{ flex:C.prev, alignItems:'center' }}>
             <Text style={{ fontSize:7, color:O }}>{fmtP(totalPrevPct)}</Text>
             <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold' }}>{fmtD(totalPrev)}</Text>
           </View>
-          <View style={{ flex:C.cur, alignItems:'flex-end' }}>
+          <View style={{ flex:C.cur, alignItems:'center' }}>
             <Text style={{ fontSize:7, color:T }}>{fmtP(totalCurPct)}</Text>
             <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:T }}>{fmtD(totalCur)}</Text>
           </View>
-          <View style={{ flex:C.total, alignItems:'flex-end' }}>
+          <View style={{ flex:C.total, alignItems:'center' }}>
             <Text style={{ fontSize:7, color:O }}>{fmtP(totalBilledPct)}</Text>
             <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold' }}>{fmtD(totalBilled)}</Text>
           </View>
-          <View style={{ flex:C.rem, alignItems:'flex-end' }}>
+          <View style={{ flex:C.rem, alignItems:'center' }}>
             <Text style={{ fontSize:7, color:'#2D6B4A' }}>{fmtP(totalRemPct)}</Text>
             <Text style={{ fontSize:8, fontFamily:'Helvetica-Bold', color:'#2D6B4A' }}>{fmtD(totalRem)}</Text>
           </View>
