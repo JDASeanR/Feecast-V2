@@ -170,10 +170,10 @@ export default function DashboardTab({ appState, onNavigate }) {
     <div style={{ background:'#F5F5F1', padding:14, display:'flex', flexDirection:'column', gap:10, height:'100%', overflow:'hidden' }}>
 
       {/* ── Hero ── */}
-      <div style={{ background:'#3D3935', borderRadius:6, padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+      <div style={{ background:'#3D3935', borderRadius:6, padding:'18px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div>
-          <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, letterSpacing:'0.04em', textTransform:'uppercase', color:'#F5F5F1', lineHeight:1 }}>JD+A Projections Dashboard</div>
-          <div style={{ fontSize:11, color:'rgba(245,245,241,0.45)', marginTop:3 }}>{CY} · Live from tracker</div>
+          <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.04em', textTransform:'uppercase', color:'#F5F5F1', lineHeight:1 }}>JD+A Projections Dashboard</div>
+          <div style={{ fontSize:11, color:'rgba(245,245,241,0.45)', marginTop:5 }}>{CY} · Live from tracker</div>
         </div>
         <div style={{ display:'flex', gap:28, alignItems:'center' }}>
           <HeroKPI label={`Billed YTD (${ytdN} mo)`} value={fmtK(ytdGross)} sub={`${pctGoal}% of ${fmtK(ytdGoal)} goal`} accent={pctGoal>=100} />
@@ -209,7 +209,7 @@ export default function DashboardTab({ appState, onNavigate }) {
                     {[['Q1','Jan–Mar',q1v],['Q2','Apr–Jun',q2v],['Q3','Jul–Sep',null],['Q4','Oct–Dec',null]].map(([l,m,v])=>(
                       <div key={l} style={{ background:'#ECEAE3', borderRadius:4, padding:'10px', textAlign:'center' }}>
                         <div style={{ fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{l}</div>
-                        <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:18, color:v?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#b0aca0' }}>{v?fmtK(v):'—'}</div>
+                        <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:22, color:v?(v>=monthlyGoal?'#736F4C':'#BD6439'):'#b0aca0' }}>{v?fmtK(v):'—'}</div>
                         <div style={{ fontSize:11, color:'#736F4C', marginTop:2 }}>{m}</div>
                       </div>
                     ))}
@@ -295,7 +295,7 @@ export default function DashboardTab({ appState, onNavigate }) {
           </div>
 
           <div style={{ marginBottom:14, flexShrink:0 }}>
-            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:34, letterSpacing:'0.02em', color:'#3D3935', lineHeight:1 }}>{fmtK(arTot)}</div>
+            <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:44, letterSpacing:'0.02em', color:'#3D3935', lineHeight:1 }}>{fmtK(arTot)}</div>
             <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>total outstanding</div>
           </div>
 
@@ -318,11 +318,11 @@ export default function DashboardTab({ appState, onNavigate }) {
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:14, paddingTop:12, borderTop:'1px solid rgba(61,57,53,0.1)', flexShrink:0 }}>
             <div>
-              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#BD6439', lineHeight:1 }}>{fmtK(arPD)}</div>
+              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:30, color:'#BD6439', lineHeight:1 }}>{fmtK(arPD)}</div>
               <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>Past due</div>
             </div>
             <div>
-              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:'#736F4C', lineHeight:1 }}>{fmtK(arB['0-30']||0)}</div>
+              <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:30, color:'#736F4C', lineHeight:1 }}>{fmtK(arB['0-30']||0)}</div>
               <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>Current (0–30)</div>
             </div>
           </div>
@@ -451,9 +451,9 @@ function LiveDot() {
 function HeroKPI({ label, value, sub, accent }) {
   return (
     <div style={{ textAlign:'right' }}>
-      <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(245,245,241,0.45)', marginBottom:3 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', color:accent?'#BD6439':'#F5F5F1', lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:11, color:'rgba(245,245,241,0.38)', marginTop:3 }}>{sub}</div>
+      <div style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(245,245,241,0.45)', marginBottom:4 }}>{label}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:44, letterSpacing:'0.02em', color:accent?'#BD6439':'#F5F5F1', lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:11, color:'rgba(245,245,241,0.38)', marginTop:4 }}>{sub}</div>
     </div>
   )
 }
@@ -461,14 +461,14 @@ function HeroKPI({ label, value, sub, accent }) {
 function SignalCard({ label, value, sub, warn, accent, onClick }) {
   return (
     <div onClick={onClick} style={{
-      background:'#ECEAE3', borderRadius:5,
-      border:'1px solid rgba(61,57,53,0.1)',
-      borderTop: '2px solid #BD6439',
-      padding:'10px 14px', cursor:onClick?'pointer':'default',
+      background:'#ECEAE3', borderRadius:6,
+      border:'0.5px solid rgba(61,57,53,0.12)',
+      borderTop: '1px solid #BD6439',
+      padding:'14px 18px', cursor:onClick?'pointer':'default',
     }}>
-      <div style={{ fontSize:11, letterSpacing:'0.14em', textTransform:'uppercase', color:'#736F4C', marginBottom:8 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:28, letterSpacing:'0.02em', lineHeight:1, color:warn?'#BD6439':accent?'#BD6439':'#3D3935' }}>{value}</div>
-      <div style={{ fontSize:11, color:'#736F4C', marginTop:6 }}>{sub}</div>
+      <div style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#736F4C', marginBottom:10 }}>{label}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:44, letterSpacing:'0.02em', lineHeight:1, color:warn?'#BD6439':accent?'#BD6439':'#3D3935' }}>{value}</div>
+      <div style={{ fontSize:11, color:'#736F4C', marginTop:8 }}>{sub}</div>
     </div>
   )
 }
@@ -476,9 +476,9 @@ function SignalCard({ label, value, sub, warn, accent, onClick }) {
 function StatBox({ label, value, sub, muted }) {
   return (
     <div>
-      <div style={{ fontSize:11, letterSpacing:'0.12em', textTransform:'uppercase', color:'#736F4C', marginBottom:3 }}>{label}</div>
-      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:20, color:muted?'#736F4C':'#3D3935' }}>{value}</div>
-      {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:2 }}>{sub}</div>}
+      <div style={{ fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', color:'#736F4C', marginBottom:4 }}>{label}</div>
+      <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:26, letterSpacing:'0.02em', lineHeight:1, color:muted?'#736F4C':'#3D3935' }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:4 }}>{sub}</div>}
     </div>
   )
 }

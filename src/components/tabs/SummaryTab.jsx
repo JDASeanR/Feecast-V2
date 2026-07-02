@@ -110,7 +110,7 @@ function PMHeatmap({ pmData, activeOpps }) {
                         alignItems:'center', justifyContent:'flex-start',
                         paddingTop:14, gap:2, overflow:'hidden', cursor:'default',
                       }}>
-                        <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:24, fontWeight:700, lineHeight:1, letterSpacing:'0.02em', color:s.text, flexShrink:0 }}>
+                        <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:34, fontWeight:700, lineHeight:1, letterSpacing:'0.02em', color:s.text, flexShrink:0 }}>
                           {pct > 0 ? `${pct}%` : '—'}
                         </div>
                         <div style={{ fontSize:11, fontWeight:600, color:s.text, flexShrink:0 }}>
@@ -144,7 +144,7 @@ function PMHeatmap({ pmData, activeOpps }) {
               return (
                 <td key={m.key} style={{ padding:0, border:'none', verticalAlign:'top' }}>
                   <div style={{ borderRadius:5, border:`1px solid ${s.border}`, background:s.bg, width:'100%', height:84, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', paddingTop:14, gap:2, overflow:'hidden' }}>
-                    <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:24, fontWeight:700, lineHeight:1, letterSpacing:'0.02em', color:s.text }}>{pct>0?`${pct}%`:'—'}</div>
+                    <div style={{ fontFamily:'"League Gothic",sans-serif', fontSize:34, fontWeight:700, lineHeight:1, letterSpacing:'0.02em', color:s.text }}>{pct>0?`${pct}%`:'—'}</div>
                     <div style={{ fontSize:11, fontWeight:600, color:s.text }}>{fmtK(mAlloc)}</div>
                     {mPipe>0 && <div style={{ fontSize:11, color:s.pipeColor, borderTop:`1px dashed ${s.pipeColor}`, paddingTop:3, marginTop:2, width:'80%', textAlign:'center' }}>+{fmtK(mPipe)}</div>}
                   </div>
@@ -167,9 +167,9 @@ function KPI({ label, sub, value, accent, delta }) {
     ? (delta >= 0 ? '#2d7a3a' : '#BD6439')
     : accent ? '#BD6439' : '#3D3935'
   return (
-    <div style={{ background:'#ECEAE3', borderRadius:4, padding:'12px 14px' }}>
+    <div style={{ background:'#ECEAE3', borderRadius:6, padding:'16px 18px', border:'0.5px solid rgba(61,57,53,0.1)' }}>
       <div className="eyebrow mb-1">{label}</div>
-      <div className="font-display tracking-display leading-none" style={{ fontSize:24, color }}>{value}</div>
+      <div className="font-display tracking-display leading-none" style={{ fontSize:38, color }}>{value}</div>
       {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:4 }}>{sub}</div>}
     </div>
   )
@@ -180,7 +180,7 @@ function MetricCell({ label, sub, value, warn, accent }) {
   return (
     <div>
       <div className="eyebrow mb-1">{label}</div>
-      <div className="font-display tracking-display leading-none" style={{ fontSize:20, color }}>{value}</div>
+      <div className="font-display tracking-display leading-none" style={{ fontSize:28, color }}>{value}</div>
       {sub && <div style={{ fontSize:11, color:'#736F4C', marginTop:3 }}>{sub}</div>}
     </div>
   )

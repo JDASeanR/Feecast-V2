@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { clsx, useLocalPref } from '../../lib/utils'
+import jdaLogoVellum from '../../assets/jda-logo-vellum.svg'
+import jdaLogoCharcoal from '../../assets/jda-logo-charcoal.svg
 
 import PlaceholderTab from './PlaceholderTab.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -295,17 +297,21 @@ export default function AppShell({ session, store }) {
       )}
 
       {/* Header — Graphite surface */}
-      <header style={{ background: '#3D3935', color: '#F5F5F1' }}
-        className="px-5 py-3 flex items-center gap-3 shrink-0">
+      <header style={{ background: '#3D3935', color: '#F5F5F1', minHeight: 64 }}
+        className="px-6 py-0 flex items-center gap-0 shrink-0">
 
-        {/* Logo */}
-        {appState?.settings?.firm?.logo && (
-          <img src={appState.settings.firm.logo} alt="firm logo"
-            style={{ height:36, maxWidth:100, objectFit:"contain", marginRight:6, opacity:0.92 }} />
-        )}
+        {/* JD+A horizontal lockup SVG */}
+        <img
+          src={jdaLogoVellum}
+          alt="JD+A"
+          style={{ height: 28, width: 'auto', objectFit: 'contain', opacity: 0.92, marginRight: 20 }}
+        />
 
-        {/* Wordmark */}
-        <div className="font-display tracking-display mr-4" style={{ fontSize: 28, letterSpacing: '0.02em' }}>
+        {/* Divider */}
+        <div style={{ width: 1, height: 32, background: 'rgba(245,245,241,0.18)', marginRight: 20, flexShrink: 0 }} />
+
+        {/* Feecast wordmark */}
+        <div className="font-display tracking-display" style={{ fontSize: 36, letterSpacing: '0.04em', lineHeight: 1 }}>
           FEE<span style={{ color: '#BD6439' }}>CAST</span>
         </div>
 
@@ -341,13 +347,13 @@ export default function AppShell({ session, store }) {
             { label: 'Chat', icon: 'ti-message-circle', onClick: () => { setChatOpen(true); setChatUnread(0) }, badge: chatUnread },
           ].map(({ label, icon, onClick, disabled, badge }) => (
             <button key={label} onClick={onClick} disabled={disabled}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 font-display tracking-ui uppercase transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 font-display tracking-ui uppercase transition-colors cursor-pointer"
               style={{
-                fontSize: 12, position: 'relative',
+                fontSize: 11, position: 'relative',
                 background: 'transparent',
                 color: '#F5F5F1',
                 border: '0.5px solid rgba(245,245,241,0.25)',
-                borderRadius: 5,
+                borderRadius: 4,
                 opacity: disabled ? 0.5 : 1,
               }}
               onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(245,245,241,0.6)'}
@@ -402,7 +408,7 @@ export default function AppShell({ session, store }) {
       </header>
 
       {/* Tab nav — Vellum surface, Terracotta underline on active */}
-      <nav style={{ background: '#F5F5F1', borderBottom: '1px solid rgba(61,57,53,0.12)' }}
+      <nav style={{ background: '#F5F5F1', borderBottom: '1px solid rgba(61,57,53,0.12)', minHeight: 56 }}
         className="px-2 flex gap-0 shrink-0 overflow-x-auto">
         {orderedTabs.map(tab => {
           const isActive = activeTab === tab.id
@@ -438,7 +444,7 @@ export default function AppShell({ session, store }) {
               }}
               onDragEnd={() => setDragTab(null)}
               onClick={() => setActiveTab(tab.id)}
-              className="relative flex flex-col items-center gap-0.5 px-3 py-2 cursor-pointer transition-colors whitespace-nowrap font-display tracking-eyebrow uppercase"
+              className="relative flex flex-col items-center gap-1 px-4 py-3 cursor-pointer transition-colors whitespace-nowrap font-display tracking-eyebrow uppercase"
               style={{
                 fontSize: 10,
                 color: isActive ? '#3D3935' : '#8a8580',
@@ -446,11 +452,13 @@ export default function AppShell({ session, store }) {
                 background: 'transparent',
                 border: 'none',
                 opacity: dragTab === tab.id ? 0.4 : 1,
+                minHeight: 56,
+                justifyContent: 'center',
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = '#3D3935' }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = '#8a8580' }}
             >
-              <i className={clsx('ti', tab.icon)} style={{ fontSize: 16 }} />
+              <i className={clsx('ti', tab.icon)} style={{ fontSize: 20 }} />
               {tab.label}
               {badge != null && (
                 <span className="absolute -top-0.5 -right-0.5 badge"
